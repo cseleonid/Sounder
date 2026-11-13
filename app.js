@@ -7,7 +7,8 @@ const slug=s=>norm(s).replace(/ /g,"-");
 const today=()=>new Date().toISOString().slice(0,10);
 const hue=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;return h%360};
 const initials=n=>String(n).split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
-const cfg=(k,v)=>{try{if(v===undefined)return localStorage.getItem("sd-"+k)||"";v?localStorage.setItem("sd-"+k,v):localStorage.removeItem("sd-"+k)}catch(e){return ""}};
+const DEFAULT_CID="f4ffe56412ce48e0865c20395514fc06";
+const cfg=(k,v)=>{try{if(v===undefined)return localStorage.getItem("sd-"+k)||(k==="cid"?DEFAULT_CID:"");v?localStorage.setItem("sd-"+k,v):localStorage.removeItem("sd-"+k)}catch(e){return ""}};
 const IC={ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg>',next:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5.5v13l9-6.5zM17 5.5h2v13h-2z"/></svg>',heart:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>',heart0:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>'};
 
 /* ============ dati (salvati nel browser) ============ */
