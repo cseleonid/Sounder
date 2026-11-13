@@ -216,9 +216,10 @@ async function discover(manual){
 }
 
 /* ============ card Scopri ============ */
+const vis=a=>a.brani.map((b,i)=>({b,i})).filter(x=>x.b.st!=="no");
 function songRow(a,b,i){
   const hearted=S.hearts.includes(b.uri);
-  return `<div class="song${nowUri()===b.uri?" on":""}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Salva tra i brani che ti piacciono" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>`;
+  return `<div class="song${nowUri()===b.uri?" on":""}" data-aid="${esc(a.id)}" data-i="${i}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Salva tra i brani che ti piacciono" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>`;
 }
 function renderDeck(){
   const q=pend(),el=$("#view");
@@ -235,7 +236,7 @@ function renderDeck(){
     <div class="dbody"><div class="tags">${esc(a.genere||"")}</div><h2>${esc(a.nome)}</h2>
     ${a.rif&&a.rif.length?`<div class="sim"><span class="l">Simile a</span>${a.rif.map(r=>`<span class="chip">${esc(r)}</span>`).join("")}</div>`:""}
     ${a.info?`<p class="about">${esc(a.info)}${a.wiki?` <a href="${esc(a.wiki)}" target="_blank" rel="noopener">Wikipedia</a>`:""}</p>`:""}
-    <div class="songs">${a.brani.slice(0,3).map((b,i)=>songRow(a,b,i)).join("")}</div></div></article></div>
+    <div class="songs">${vis(a).slice(0,3).map(({b,i})=>songRow(a,b,i)).join("")}</div><p class="tip">Swipe sulle canzoni: a destra la salvi, a sinistra la togli.</p></div></article></div>
     <div class="acts"><button class="big no" type="button" data-dno aria-label="Non mi piace ${esc(a.nome)}">${IC.x}</button><button class="big ok" type="button" data-dok aria-label="Mi piace ${esc(a.nome)}">${IC.ok}</button></div>
     <p class="count">${q.length} da valutare${busy?" · cerco altri simili…":""}</p>`;
   el.innerHTML=h;
@@ -256,7 +257,7 @@ function flyOut(el,dir,done){
 const swipe=(()=>{
   let s=null;const TH=w=>Math.min(120,w*.3);
   document.addEventListener("pointerdown",e=>{
-    if(e.button!==0||e.target.closest("button,a"))return;
+    if(e.button!==0||e.target.closest("button,a,.song"))return;
     const el=e.target.closest(".dcard");if(!el)return;
     s={el,x:e.clientX,y:e.clientY,dx:0,lock:false,id:e.pointerId,w:el.offsetWidth,vx:0,lt:performance.now(),lx:e.clientX};
   });
@@ -293,13 +294,79 @@ const swipe=(()=>{
   return {active:()=>!!(s&&s.lock)};
 })();
 
+
+/* ============ swipe sulle singole canzoni ============ */
+async function keepSong(id,i){
+  const a=S.artists[id],b=a&&a.brani[i];if(!b)return;
+  b.st="ok";save();
+  if(b.uri&&S.hearts.includes(b.uri)){toast("Già tra i brani che ti piacciono");render();return}
+  await heart(id,i);
+}
+async function moreSongs(a){
+  if(!logged())return;
+  try{
+    if(!a.spId){const x=await spArtist(a.nome);if(!x)return;a.spId=x.id;a.img=a.img||x.images?.[0]?.url||""}
+    const have=new Set(a.brani.map(b=>norm(b.t)));
+    const j=await api("/search?"+new URLSearchParams({q:`artist:"${a.nome}"`,type:"track",limit:10}));
+    const fresh=(j.tracks?.items||[]).filter(t=>t.artists.some(x=>x.id===a.spId)&&!have.has(norm(t.name))).filter((t,k,arr)=>arr.findIndex(u=>norm(u.name)===norm(t.name))===k);
+    const need=3-vis(a).length;if(need<=0)return;
+    const add=fresh.slice(0,need).map(trk);
+    if(!add.length){toast(`Per ora non trovo altre canzoni di ${a.nome}`);return}
+    a.brani.push(...add);save();render();
+  }catch(e){}
+}
+function dropSong(id,i){
+  const a=S.artists[id],b=a&&a.brani[i];if(!b)return;
+  const prev=b.st;b.st="no";save();render();
+  toast("Canzone tolta",{l:"Annulla",f:()=>{b.st=prev;save();render()}});
+  moreSongs(a);
+}
+const songSwipe=(()=>{
+  let s=null;const TH=70;
+  document.addEventListener("pointerdown",e=>{
+    if(e.button!==0||e.target.closest("button,a"))return;
+    const el=e.target.closest(".song[data-aid]");if(!el)return;
+    s={el,x:e.clientX,y:e.clientY,dx:0,lock:false,id:e.pointerId,w:el.offsetWidth};
+  });
+  document.addEventListener("pointermove",e=>{
+    if(!s||e.pointerId!==s.id)return;
+    const dx=e.clientX-s.x,dy=e.clientY-s.y;
+    if(!s.lock){
+      if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)){s=null;return}
+      if(!(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.2))return;
+      s.lock=true;s.x+=dx>0?10:-10;try{s.el.setPointerCapture(e.pointerId)}catch(_){}
+      s.el.style.transition="none";
+    }
+    e.preventDefault();
+    s.dx=e.clientX-s.x;
+    s.el.style.transform=`translateX(${s.dx}px)`;
+    s.el.style.setProperty("--p",Math.max(-1,Math.min(1,s.dx/TH)));
+    s.el.dataset.dir=s.dx>0?"ok":"no";
+  },{passive:false});
+  function end(e){
+    if(!s||e.pointerId!==s.id)return;
+    const st=s;s=null;if(!st.lock)return;
+    const kill=ev=>{ev.preventDefault();ev.stopPropagation()};
+    document.addEventListener("click",kill,{capture:true,once:true});
+    setTimeout(()=>document.removeEventListener("click",kill,true),400);
+    const el=st.el,go=e.type==="pointerup"&&Math.abs(st.dx)>=TH,id=el.dataset.aid,i=Number(el.dataset.i);
+    const back=()=>{el.style.transition="transform .4s cubic-bezier(.2,1.4,.4,1)";el.style.transform="";el.style.setProperty("--p",0);setTimeout(()=>{el.style.transition="";delete el.dataset.dir},420)};
+    if(!go){back();return}
+    if(st.dx>0){back();keepSong(id,i);return}
+    const h=el.offsetHeight;
+    el.style.transition="transform .25s ease-in,opacity .25s";el.style.transform=`translateX(-${st.w*1.1}px)`;el.style.opacity="0";
+    setTimeout(()=>{el.style.overflow="hidden";el.style.height=h+"px";el.offsetHeight;el.style.transition="height .22s ease,padding .22s ease,margin .22s ease";el.style.height="0px";el.style.paddingTop=el.style.paddingBottom="0px";el.style.marginTop="-8px";setTimeout(()=>dropSong(id,i),220)},250);
+  }
+  addEventListener("pointerup",end);addEventListener("pointercancel",end);
+})();
+
 /* ============ Preferiti ============ */
 function renderFav(){
   const L=liked(),has=S.playlistId;
   let h=`<h1 class="pg">Preferiti</h1><p class="sub">Gli artisti che hai accettato. Tocca il cuore su una canzone per salvarla.</p>`;
   h+=`<div class="bar"><p>${has?`La tua playlist «Sounder»: ${S.playlistN} brani, aggiornata il ${esc(S.playlistDate)}. `:`${S.hearts.length} canzon${S.hearts.length===1?"e":"i"} con il cuore. `}${has?`<a class="open" href="https://open.spotify.com/playlist/${esc(S.playlistId)}" target="_blank" rel="noopener">Apri la playlist</a>`:"Con il tasto crei una sola playlist; quando la aggiorni resta sempre la stessa."}</p><button class="btn" type="button" data-playlist${busy?" disabled":""}>${has?"Aggiorna playlist":"Crea playlist"}</button></div>`;
   if(!L.length)h+=`<div class="empty">Nessun preferito ancora: vai su Scopri e swipa a destra.</div>`;
-  h+=L.map(a=>`<div class="arow"><button class="ahead" type="button" data-open="${esc(a.id)}" aria-expanded="${openArtist===a.id}"><span class="av"${a.img?` style="background-image:url('${esc(a.img)}')"`:` style="background:hsl(${hue(a.nome)} 55% 35%)"`}>${a.img?"":esc(initials(a.nome))}</span><span class="tx"><b>${esc(a.nome)}</b><i>${esc(a.genere||"")}</i></span></button>${openArtist===a.id?`<div class="abody">${a.info?`<p class="about">${esc(a.info)}</p>`:""}<div class="songs">${a.brani.map((b,i)=>songRow(a,b,i)).join("")}</div><div class="mini"><button class="btn" type="button" data-playall="${esc(a.id)}">${IC.play}Ascolta tutto</button><button class="btn ghostb" type="button" data-remove="${esc(a.id)}">Togli dai preferiti</button></div></div>`:""}</div>`).join("");
+  h+=L.map(a=>`<div class="arow"><button class="ahead" type="button" data-open="${esc(a.id)}" aria-expanded="${openArtist===a.id}"><span class="av"${a.img?` style="background-image:url('${esc(a.img)}')"`:` style="background:hsl(${hue(a.nome)} 55% 35%)"`}>${a.img?"":esc(initials(a.nome))}</span><span class="tx"><b>${esc(a.nome)}</b><i>${esc(a.genere||"")}</i></span></button>${openArtist===a.id?`<div class="abody">${a.info?`<p class="about">${esc(a.info)}</p>`:""}<div class="songs">${vis(a).map(({b,i})=>songRow(a,b,i)).join("")}</div><div class="mini"><button class="btn" type="button" data-playall="${esc(a.id)}">${IC.play}Ascolta tutto</button><button class="btn ghostb" type="button" data-remove="${esc(a.id)}">Togli dai preferiti</button></div></div>`:""}</div>`).join("");
   $("#view").innerHTML=h;
   L.filter(a=>openArtist===a.id).forEach(enrich);
 }
@@ -370,7 +437,7 @@ async function playUris(uris,meta){
 }
 async function playFrom(id,i,all){
   const a=S.artists[id];if(!a)return;
-  const list=all?a.brani:a.brani.slice(i);
+  const list=all?vis(a).map(x=>x.b):a.brani.slice(i).filter(b=>b.st!=="no");
   for(const b of list.slice(0,3))if(!b.uri)try{await spResolve(a,b)}catch(e){}
   const uris=list.map(b=>b.uri).filter(Boolean);
   if(!uris.length){toast("Non trovo questo brano su Spotify");return}
