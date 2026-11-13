@@ -17,10 +17,56 @@ function load(){
   try{const j=JSON.parse(localStorage.getItem("sd-data"));if(j&&j.artists)S=Object.assign(S,j)}catch(e){}
   if(!Object.keys(S.artists).length){
     SEED.forEach(([id,nome,genere,rif,info,st,br],i)=>{S.artists[id]={id,nome,genere,rif,info,stato:st==="a"?"aggiunto":st==="i"?"ignorato":"nuovo",ord:i,dec:st==="n"?"":"2026-11-13",brani:br.map(([t,tid,al,an])=>({t,uri:tid?"spotify:track:"+tid:"",al,an}))}});
-    save();
+    S.t=0;saveLocal();
   }
 }
-function save(){try{localStorage.setItem("sd-data",JSON.stringify(S))}catch(e){}}
+const strip=(k,v)=>k.startsWith("_")?undefined:v;
+function save(){S.t=Date.now();try{localStorage.setItem("sd-data",JSON.stringify(S,strip))}catch(e){}push()}
+function saveLocal(){try{localStorage.setItem("sd-data",JSON.stringify(S,strip))}catch(e){}}
+/* sincronizzazione tra dispositivi: un gist privato su GitHub */
+const gh=()=>cfg("gh");
+async function ghApi(path,opt={}){
+  const r=await fetch("https://api.github.com"+path,{...opt,headers:{Authorization:"token "+gh(),Accept:"application/vnd.github+json",...(opt.body?{"Content-Type":"application/json"}:{})}});
+  if(!r.ok){const e=new Error("GitHub "+r.status);e.code=r.status;throw e}
+  return r.status===204?{}:r.json();
+}
+async function gistId(){
+  let id=cfg("gist");if(id)return id;
+  const list=await ghApi("/gists?per_page=100");
+  const g=list.find(x=>x.files&&x.files["sounder.json"]);
+  if(g){cfg("gist",g.id);return g.id}
+  return "";
+}
+let syncMsg="",pushT;
+async function pull(){
+  if(!gh())return;
+  try{
+    const id=await gistId();
+    if(!id){await pushNow();return}
+    const g=await ghApi("/gists/"+id),f=g.files&&g.files["sounder.json"];
+    if(!f){await pushNow();return}
+    const txt=f.truncated?await (await fetch(f.raw_url)).text():f.content;
+    const R=JSON.parse(txt);
+    if((R.t||0)>(S.t||0)){S=Object.assign({artists:{},hearts:[],playlistId:""},R);saveLocal();syncMsg="Dati aggiornati dall'altro dispositivo";render()}
+    else if((R.t||0)<(S.t||0))await pushNow();
+    else syncMsg="Sincronizzato";
+    if(view==="imp")render();
+  }catch(e){if(e.code===404)cfg("gist","");syncMsg=e.code===401?"Token non valido":"Sincronizzazione non riuscita"}
+}
+let pushChain=Promise.resolve();
+function pushNow(){return pushChain=pushChain.then(doPush,doPush)}
+async function doPush(){
+  if(!gh())return;
+  if(!S.t){S.t=Date.now();saveLocal()}
+  const body={files:{"sounder.json":{content:JSON.stringify(S,strip)}}};
+  try{
+    const id=await gistId();
+    if(id)await ghApi("/gists/"+id,{method:"PATCH",body:JSON.stringify(body)});
+    else{const g=await ghApi("/gists",{method:"POST",body:JSON.stringify({description:"Sounder: i tuoi dati",public:false,...body})});cfg("gist",g.id)}
+    syncMsg="Sincronizzato";
+  }catch(e){if(e.code===404)cfg("gist","");syncMsg=e.code===401?"Token non valido":"Sincronizzazione non riuscita"}
+}
+function push(){if(!gh())return;clearTimeout(pushT);pushT=setTimeout(pushNow,2000)}
 const A=()=>Object.values(S.artists);
 const pend=()=>A().filter(a=>a.stato==="nuovo").sort((x,y)=>(x.ord||0)-(y.ord||0));
 const liked=()=>A().filter(a=>a.stato==="aggiunto").sort((x,y)=>String(y.dec).localeCompare(String(x.dec)));
@@ -318,7 +364,8 @@ async function playUris(uris,meta){
     const d=await pickDevice();
     if(!d){toast("Apri l'app Spotify sul telefono (basta farla partire) e riprova");return}
     await api("/me/player/play?"+new URLSearchParams({device_id:d}),{method:"PUT",body:{uris}});
-    now={uri:uris[0],t:meta.t,a:meta.a,img:meta.img||"",playing:true};renderPlayer();startPoll();
+    api("/me/player/repeat?"+new URLSearchParams({state:"off",device_id:d}),{method:"PUT"}).catch(()=>{});
+    now={uri:uris[0],t:meta.t,a:meta.a,img:meta.img||"",playing:true,hold:Date.now()+4000};renderPlayer();startPoll();
   }catch(e){toast(errMsg(e))}
 }
 async function playFrom(id,i,all){
@@ -337,7 +384,7 @@ async function nextTrack(){try{await api("/me/player/next",{method:"POST"});setT
 async function refreshNow(){
   try{
     const j=await api("/me/player");
-    if(j&&j.item){now={uri:j.item.uri,t:j.item.name,a:(j.item.artists||[]).map(x=>x.name).join(", "),img:j.item.album?.images?.[1]?.url||j.item.album?.images?.[0]?.url||"",playing:!!j.is_playing};renderPlayer()}
+    if(j&&j.item&&!(now&&now.hold>Date.now()&&j.item.uri!==now.uri)){now={uri:j.item.uri,t:j.item.name,a:(j.item.artists||[]).map(x=>x.name).join(", "),img:j.item.album?.images?.[1]?.url||j.item.album?.images?.[0]?.url||"",playing:!!j.is_playing};renderPlayer()}
   }catch(e){}
 }
 function startPoll(){clearInterval(poll);poll=setInterval(()=>{if(!document.hidden&&logged())refreshNow()},5000);setTimeout(refreshNow,1500)}
@@ -361,8 +408,11 @@ function renderSet(){
     <label>Chiave API Last.fm<input id="lfm" value="${esc(cfg("lfm"))}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="incolla la chiave"></label>
     <div class="mini"><button class="btn" type="button" data-savelfm>Salva</button></div></div>
   <div class="card"><h3>Ascolto</h3><small>${mobile?"Dal telefono, Sounder comanda l'app Spotify: tieni l'app aperta o avviala una volta, poi premi play qui. Il player incorporato nel browser funziona solo su computer.":"Su computer, Sounder diventa un lettore Spotify: premi play su una canzone e parte qui nella pagina."} Serve Spotify Premium.</small></div>
+  <div class="card"><h3>3. Sincronizza i dispositivi ${gh()?'<span class="ok-t">attiva</span>':""}</h3><small>Le tue scelte vengono salvate in un file privato nel tuo GitHub, così le ritrovi su telefono e computer. Serve un token gratuito: apri <b>github.com/settings/tokens/new?scopes=gist&amp;description=Sounder</b>, premi «Generate token» in fondo e copialo.</small>
+    <label>Token GitHub<input id="gh" value="${esc(gh())}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="incolla il token (ghp_…)"></label>
+    <div class="mini"><button class="btn" type="button" data-savegh>Salva e sincronizza</button>${gh()?`<button class="btn ghostb" type="button" data-nogh>Disattiva</button>`:""}</div>${syncMsg?`<small>${esc(syncMsg)}</small>`:""}</div>
   <div class="card"><h3>I tuoi dati</h3><small>Le tue scelte sono salvate in questo browser. Per portarle su un altro dispositivo, copia il testo qui sotto e incollalo là.</small>
-    <textarea id="exp" spellcheck="false" aria-label="Dati esportati">${esc(JSON.stringify(S))}</textarea>
+    <textarea id="exp" spellcheck="false" aria-label="Dati esportati">${esc(JSON.stringify(S,strip))}</textarea>
     <div class="mini"><button class="btn ghostb" type="button" data-import>Importa dal testo</button></div></div>
   </div>`;
 }
@@ -383,6 +433,8 @@ document.addEventListener("click",e=>{
   if(T("[data-next]")){nextTrack();return}
   if(T("[data-savecfg]")){cfg("cid",$("#cid").value.trim());if(!cfg("cid")){toast("Incolla il Client ID");return}if(logged()){toast("Salvato");render()}else login();return}
   if(T("[data-savelfm]")){cfg("lfm",$("#lfm").value.trim());toast("Chiave salvata");discover(true);return}
+  if(T("[data-savegh]")){cfg("gh",$("#gh").value.trim());cfg("gist","");if(!gh()){toast("Incolla il token");return}syncMsg="Sincronizzo…";render();pull().then(()=>{render();toast(syncMsg)});return}
+  if(T("[data-nogh]")){cfg("gh","");cfg("gist","");syncMsg="";render();toast("Sincronizzazione disattivata");return}
   if(T("[data-logout]")){localStorage.removeItem("sd-tok");sdk&&sdk.disconnect();sdk=null;dev=null;now=null;render();toast("Scollegato");return}
   if(T("[data-import]")){try{const j=JSON.parse($("#exp").value);if(!j||!j.artists)throw 0;S=Object.assign({artists:{},hearts:[],playlistId:""},j);save();toast("Dati importati");render()}catch(err){toast("Il testo non è valido")}return}
 });
@@ -394,4 +446,7 @@ document.addEventListener("click",e=>{
   if(!logged()&&!cfg("cid"))view="imp";
   render();
   if(logged()){initSdk();syncHearts();refreshNow();startPoll()}
+  pull();
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)pull()});
+  if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 })();
