@@ -87,8 +87,9 @@ h1.pg{font-family:var(--fd);font-size:30px;margin:8px 0 4px}
 .player .cv{width:46px;height:46px;border-radius:8px;background:var(--card2) center/cover;flex:none}
 .player .tx{flex:1;min-width:0;display:grid}.player b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player i{font-style:normal;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .player .rbtn{color:var(--ink);font-size:20px}.player .rbtn.pp{background:var(--grad);color:#08080c}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(100px + env(safe-area-inset-bottom,0px));z-index:40;background:#fff;color:#111;padding:10px 16px;border-radius:999px;font-weight:700;font-size:13.5px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 10px 30px rgba(0,0,0,.5)}
-.toast button{border:0;background:#111;color:var(--lime);border-radius:999px;padding:4px 12px;font-weight:800}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(100px + env(safe-area-inset-bottom,0px));z-index:40;box-sizing:border-box;width:max-content;max-width:min(92vw,420px);background:#fff;color:#111;padding:12px 16px;border-radius:16px;font-weight:700;font-size:14px;line-height:1.35;display:flex;gap:14px;align-items:center;justify-content:space-between;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.toast span{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;text-align:left}
+.toast button{flex:none;border:0;background:#111;color:var(--lime);border-radius:999px;padding:6px 14px;font-weight:800;font-size:13px}
 .spin{width:18px;height:18px;border-radius:50%;border:3px solid var(--stroke);border-top-color:var(--lime);animation:sp 1s linear infinite;display:inline-block;vertical-align:-4px;margin-right:8px}
 @keyframes sp{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}}
