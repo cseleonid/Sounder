@@ -9,7 +9,7 @@ const hue=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;retu
 const initials=n=>String(n).split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
 const DEFAULT_CID="f4ffe56412ce48e0865c20395514fc06";
 const cfg=(k,v)=>{try{if(v===undefined)return localStorage.getItem("sd-"+k)||(k==="cid"?DEFAULT_CID:"");v?localStorage.setItem("sd-"+k,v):localStorage.removeItem("sd-"+k)}catch(e){return ""}};
-const IC={ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg>',next:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5.5v13l9-6.5zM17 5.5h2v13h-2z"/></svg>',heart:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>',heart0:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>'};
+const IC={ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg>',next:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5.5v13l9-6.5zM17 5.5h2v13h-2z"/></svg>',heart:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>',info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.800v.1"/></svg>',heart0:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>'};
 
 /* ============ dati (salvati nel browser) ============ */
 let S={artists:{},hearts:[],playlistId:"",playlistN:0,playlistDate:""};
@@ -68,7 +68,7 @@ async function doPush(){
 }
 function push(){if(!gh())return;clearTimeout(pushT);pushT=setTimeout(pushNow,2000)}
 const A=()=>Object.values(S.artists);
-const pend=()=>A().filter(a=>a.stato==="nuovo").sort((x,y)=>(x.ord||0)-(y.ord||0));
+const pend=t=>A().filter(a=>a.stato==="nuovo"&&(!t||(a.tema||"per-te")===t)).sort((x,y)=>(x.ord||0)-(y.ord||0));
 const liked=()=>A().filter(a=>a.stato==="aggiunto").sort((x,y)=>String(y.dec).localeCompare(String(x.dec)));
 
 /* ============ interfaccia di base ============ */
@@ -178,35 +178,57 @@ async function wiki(name){
 }
 const cut=s=>{s=String(s).replace(/<[^>]+>/g,"").trim();if(s.length<=360)return s;const i=s.slice(0,360).lastIndexOf(". ");return s.slice(0,i>120?i+1:360)};
 
-/* ============ scoperta: artisti affini a quelli che ti piacciono ============ */
-async function discover(manual){
+/* ============ temi ============ */
+const TEMI=[
+ {id:"per-te",n:"Per te",d:"Un artista alla volta, simile a quelli che ti piacciono."},
+ {id:"italiana",n:"Musica italiana",d:"Artisti e canzoni italiane che probabilmente non conosci.",tags:["italian","italiano","cantautore","italian pop","italian rock","indie italiano","italian hip hop"]},
+ {id:"malinconico",n:"Malinconico ma non troppo",d:"Canzoni un po' tristi, alla Placebo o agli Smashing Pumpkins, senza esagerare.",tags:["melancholic","dream pop","alternative rock","shoegaze","post-punk","sadcore"],seeds:["Placebo","The Smashing Pumpkins","The Cure","Mazzy Star"]},
+ {id:"happy",n:"Happy Songs",d:"Canzoni che danno forza e allegria per lavorare.",tags:["feel good","happy","upbeat","funk","reggae","disco","soul"]},
+ {id:"strumenta",n:"Strumenta",d:"Solo musica strumentale, senza testo.",tags:["instrumental","post-rock","ambient","jazz fusion","math rock"]},
+ {id:"sottocassa",n:"Sotto cassa",d:"Rave, techno, goa, hardcore, trance.",tags:["trance","goa trance","psytrance","hard techno","hardcore","techno","rave","gabber"]}
+];
+let tema="per-te";const tried={};
+const temaOf=a=>a.tema||"per-te";
+const shuffle=l=>l.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
+
+/* ============ scoperta: artisti nuovi, per tema o affini ai tuoi preferiti ============ */
+async function candidates(T,known){
+  const out={};
+  const add=(name,from,w)=>{const k=norm(name);if(!k||known.has(k))return;const o=out[k]||(out[k]={nome:name,s:0,from:[]});o.s+=w;if(from&&!o.from.includes(from))o.from.push(from)};
+  if(T.id==="per-te"){
+    const base=shuffle(liked().slice(0,10)).slice(0,5);
+    if(!base.length)return {err:"Metti qualche artista tra i preferiti: da lì cerco quelli simili"};
+    await Promise.all(base.map(async a=>{try{const j=await lfm("artist.getsimilar",{artist:a.nome,limit:30,autocorrect:1});(j.similarartists?.artist||[]).forEach(x=>add(x.name,a.nome,Number(x.match)||0))}catch(e){}}));
+    return {list:Object.values(out).sort((x,y)=>y.s-x.s)};
+  }
+  const tags=shuffle(T.tags).slice(0,2);
+  await Promise.all(tags.map(async t=>{try{const j=await lfm("tag.gettopartists",{tag:t,limit:30,page:1+Math.floor(Math.random()*6)});(j.topartists?.artist||[]).forEach(x=>add(x.name,"",Math.random()))}catch(e){}}));
+  if(T.seeds){const sd=T.seeds[Math.floor(Math.random()*T.seeds.length)];try{const j=await lfm("artist.getsimilar",{artist:sd,limit:30,autocorrect:1});(j.similarartists?.artist||[]).forEach(x=>add(x.name,sd,Number(x.match)||0))}catch(e){}}
+  return {list:shuffle(Object.values(out))};
+}
+async function discover(manual,t){
+  const T=TEMI.find(x=>x.id===(t||tema))||TEMI[0];
   if(busy)return;
   if(!logged()){if(manual){view="imp";render();toast("Collegati prima a Spotify")}return}
-  if(!cfg("lfm")){if(manual){view="imp";render();toast("Inserisci la chiave Last.fm per cercare artisti affini")}return}
+  if(!cfg("lfm")){if(manual){view="imp";render();toast("Inserisci la chiave Last.fm per cercare artisti")}return}
   busy=true;render();
   try{
     const known=new Set(A().map(a=>norm(a.nome)));
-    const base=liked().slice(0,10).sort(()=>Math.random()-.5).slice(0,5);
-    if(!base.length){toast("Metti qualche artista tra i preferiti: da lì cerco quelli simili");return}
-    const sc={};
-    await Promise.all(base.map(async a=>{
-      try{const j=await lfm("artist.getsimilar",{artist:a.nome,limit:30,autocorrect:1});
-        (j.similarartists?.artist||[]).forEach(x=>{const k=norm(x.name);if(known.has(k))return;const o=sc[k]||(sc[k]={nome:x.name,s:0,from:[]});o.s+=Number(x.match)||0;o.from.push(a.nome)})}catch(e){}
-    }));
-    const cand=Object.values(sc).sort((x,y)=>y.s-x.s).slice(0,18);
-    let added=0,ord=A().reduce((m,a)=>Math.max(m,a.ord||0),0);
-    for(const c of cand){
-      if(added>=4)break;
+    const c=await candidates(T,known);
+    if(c.err){toast(c.err);return}
+    let added=0,ord=A().reduce((m,a)=>Math.max(m,a.ord||0),0),checked=0;
+    for(const x of c.list){
+      if(added>=4||checked>=20)break;checked++;
       try{
-        const inf=await lfm("artist.getinfo",{artist:c.nome,lang:"it",autocorrect:1});
+        const inf=await lfm("artist.getinfo",{artist:x.nome,lang:"it",autocorrect:1});
         const L=Number(inf.artist?.stats?.listeners||0);
         if(L>700000)continue;
-        const sp=await spArtist(c.nome);if(!sp)continue;
+        const sp=await spArtist(x.nome);if(!sp)continue;
         const br=await spTracks(sp);if(br.length<2)continue;
-        const w=await wiki(c.nome);
-        const tags=(inf.artist?.tags?.tag||[]).map(t=>t.name).slice(0,3).join(" · ");
+        const w=await wiki(x.nome);
+        const tags=(inf.artist?.tags?.tag||[]).map(g=>g.name).slice(0,3).join(" · ");
         const id=slug(sp.name);if(S.artists[id])continue;
-        S.artists[id]={id,nome:sp.name,genere:tags,rif:c.from.slice(0,2),info:w?w.t:cut(inf.artist?.bio?.summary||""),wiki:w?w.u:"",spId:sp.id,img:sp.images?.[0]?.url||"",stato:"nuovo",ord:++ord,dec:"",brani:br,scoperta:1};
+        S.artists[id]={id,nome:sp.name,genere:tags,rif:x.from.slice(0,2),info:w?w.t:cut(inf.artist?.bio?.summary||""),wiki:w?w.u:"",spId:sp.id,img:sp.images?.[0]?.url||"",stato:"nuovo",ord:++ord,dec:"",brani:br,scoperta:1,tema:T.id==="per-te"?"":T.id};
         known.add(norm(sp.name));added++;save();render();
       }catch(e){if(e.code===403||e.code==="login")throw e}
     }
@@ -217,15 +239,44 @@ async function discover(manual){
 
 /* ============ card Scopri ============ */
 const vis=a=>a.brani.map((b,i)=>({b,i})).filter(x=>x.b.st!=="no");
+const openInfo=new Set(),loadingInfo=new Set();
+const sigOf=b=>b.sig||SIG[b.t]||null;
+function infoPanel(a,b,key){
+  const g=sigOf(b);
+  if(loadingInfo.has(key))return `<div class="sinfo"><p class="about"><i class="spin"></i>Cerco informazioni…</p></div>`;
+  if(!g)return `<div class="sinfo"><p class="about">Non ho trovato informazioni su questa canzone.</p></div>`;
+  const c=Array.isArray(g.c)?g.c.filter(Boolean):[];
+  return `<div class="sinfo">${g.s?`<h4>${g.w?"Dalla voce di Wikipedia":"Significato"}</h4><p class="about">${esc(g.s)}${g.src?` <a href="${esc(g.src)}" target="_blank" rel="noopener">Leggi tutto</a>`:""}</p>`:""}${g.a?`<h4>Cosa racconta</h4><p class="about">${esc(g.a)}</p>`:""}${c.length?`<h4>Curiosità</h4><ul>${c.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}</div>`;
+}
 function songRow(a,b,i){
-  const hearted=S.hearts.includes(b.uri);
-  return `<div class="song${nowUri()===b.uri?" on":""}" data-aid="${esc(a.id)}" data-i="${i}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Salva tra i brani che ti piacciono" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>`;
+  const hearted=S.hearts.includes(b.uri),key=a.id+"|"+i,open=openInfo.has(key);
+  return `<div class="srow"><div class="song${nowUri()===b.uri?" on":""}" data-aid="${esc(a.id)}" data-i="${i}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn info${open?" on":""}" type="button" data-info="${esc(key)}" aria-expanded="${open}" aria-label="Significato e curiosità di ${esc(b.t)}">${IC.info}</button><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Salva tra i brani che ti piacciono" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>${open?infoPanel(a,b,key):""}</div>`;
+}
+async function songInfo(a,b){
+  const k=a.id+"|"+a.brani.indexOf(b);loadingInfo.add(k);render();
+  try{
+    for(const lang of ["it","en"]){
+      const r=await (await fetch(`https://${lang}.wikipedia.org/w/api.php?`+new URLSearchParams({action:"query",list:"search",srsearch:`${b.t} ${a.nome} ${lang==="it"?"canzone":"song"}`,srlimit:3,format:"json",origin:"*"}))).json();
+      for(const h of (r.query&&r.query.search)||[]){
+        if(!norm(h.title).includes(norm(b.t)))continue;
+        const sr=await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(h.title.replace(/ /g,"_"))}`);if(!sr.ok)continue;
+        const j=await sr.json();
+        if(!j.extract||!norm(j.extract).includes(norm(a.nome)))continue;
+        b.sig={s:cut(j.extract),src:(j.content_urls&&j.content_urls.desktop&&j.content_urls.desktop.page)||"",w:1};save();return;
+      }
+    }
+    b.sig=0;save();
+  }catch(e){}finally{loadingInfo.delete(k);render()}
+}
+function themeBar(){
+  return `<div class="themes" role="tablist" aria-label="Temi">${TEMI.map(t=>`<button type="button" role="tab" data-tema="${t.id}" aria-selected="${tema===t.id}">${esc(t.n)}${pend(t.id).length?`<span>${pend(t.id).length}</span>`:""}</button>`).join("")}</div>`;
 }
 function renderDeck(){
-  const q=pend(),el=$("#view");
-  let h=`<h1 class="pg">Scopri</h1><p class="sub">Un artista alla volta, simile a quelli che ti piacciono. Swipe a destra se lo vuoi, a sinistra se no.</p>`;
+  const T=TEMI.find(x=>x.id===tema)||TEMI[0],q=pend(tema),el=$("#view");
+  let h=`<h1 class="pg">Scopri</h1>${themeBar()}<p class="sub">${esc(T.d)} Swipe a destra se ti piace, a sinistra se no.</p>`;
+  if(!q.length&&!busy&&!tried[tema]&&logged()&&cfg("lfm")){tried[tema]=1;setTimeout(()=>discover(false,tema),0)}
   if(!q.length){
-    h+=`<div class="empty">${busy?`<span><i class="spin"></i>Cerco artisti simili ai tuoi preferiti…</span>`:`<span>Per ora non ho altri artisti da proporti.</span><button class="btn" type="button" data-discover>Cerca artisti simili</button>`}</div>`;
+    h+=`<div class="empty">${busy?`<span><i class="spin"></i>Cerco artisti per «${esc(T.n)}»…</span>`:`<span>Per ora non ho altri artisti da proporti.</span><button class="btn" type="button" data-discover>Cerca artisti</button>`}</div>`;
     el.innerHTML=h;return;
   }
   const a=q[0];enrich(a);
@@ -246,7 +297,7 @@ function decide(id,yes){
   const prev={stato:a.stato,dec:a.dec};
   a.stato=yes?"aggiunto":"ignorato";a.dec=today();save();render();
   toast(yes?`${a.nome}: ti piace, cerco artisti simili`:`${a.nome}: non fa per te`,{l:"Annulla",f:()=>{a.stato=prev.stato;a.dec=prev.dec;save();render()}});
-  if(pend().length<4)setTimeout(()=>discover(false),500);
+  if(pend(temaOf(a)).length<4)setTimeout(()=>discover(false,temaOf(a)),500);
 }
 function flyOut(el,dir,done){
   el.style.setProperty("--p",dir);el.dataset.dir=dir>0?"ok":"no";
@@ -488,10 +539,12 @@ function renderSet(){
 document.addEventListener("click",e=>{
   const T=s=>e.target.closest(s);let x;
   if((x=T("[data-v]"))){view=x.dataset.v;render();scrollTo({top:0});return}
-  if(T("[data-discover]")){discover(true);return}
+  if(T("[data-discover]")){discover(true,tema);return}
+  if((x=T("[data-tema]"))){tema=x.dataset.tema;view="scopri";render();return}
   if((x=T("[data-dok],[data-dno]"))){const el=$(".dcard");if(el&&!el.dataset.busy){el.dataset.busy=1;const y=x.hasAttribute("data-dok");flyOut(el,y?1:-1,()=>decide(el.dataset.aid,y))}return}
   if((x=T("[data-play]"))){playFrom(x.dataset.play,Number(x.dataset.i),false);return}
   if((x=T("[data-playall]"))){playFrom(x.dataset.playall,0,true);return}
+  if((x=T("[data-info]"))){const k=x.dataset.info,[id,ix]=k.split("|"),a=S.artists[id],b=a&&a.brani[Number(ix)];if(openInfo.has(k))openInfo.delete(k);else{openInfo.add(k);if(b&&!sigOf(b)&&b.sig!==0)songInfo(a,b)}render();return}
   if((x=T("[data-heart]"))){heart(x.dataset.heart,Number(x.dataset.i));return}
   if((x=T("[data-open]"))){openArtist=openArtist===x.dataset.open?null:x.dataset.open;render();return}
   if((x=T("[data-remove]"))){const a=S.artists[x.dataset.remove];if(a){a.stato="nuovo";a.dec="";a.ord=A().reduce((m,y)=>Math.max(m,y.ord||0),0)+1;save();openArtist=null;render();toast(`${a.nome} è tornato in Scopri`)}return}
@@ -499,7 +552,7 @@ document.addEventListener("click",e=>{
   if(T("[data-pp]")){toggle();return}
   if(T("[data-next]")){nextTrack();return}
   if(T("[data-savecfg]")){cfg("cid",$("#cid").value.trim());if(!cfg("cid")){toast("Incolla il Client ID");return}if(logged()){toast("Salvato");render()}else login();return}
-  if(T("[data-savelfm]")){cfg("lfm",$("#lfm").value.trim());toast("Chiave salvata");discover(true);return}
+  if(T("[data-savelfm]")){cfg("lfm",$("#lfm").value.trim());toast("Chiave salvata");view="scopri";render();return}
   if(T("[data-savegh]")){cfg("gh",$("#gh").value.trim());cfg("gist","");if(!gh()){toast("Incolla il token");return}syncMsg="Sincronizzo…";render();pull().then(()=>{render();toast(syncMsg)});return}
   if(T("[data-nogh]")){cfg("gh","");cfg("gist","");syncMsg="";render();toast("Sincronizzazione disattivata");return}
   if(T("[data-logout]")){localStorage.removeItem("sd-tok");sdk&&sdk.disconnect();sdk=null;dev=null;now=null;render();toast("Scollegato");return}
