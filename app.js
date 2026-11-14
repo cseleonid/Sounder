@@ -86,7 +86,7 @@ function toast(msg,act){
   toast._t=setTimeout(()=>el.hidden=true,act?6000:3500);
 }
 function tabs(){
-  const t=[["scopri","Scopri",pend().length],["preferiti","Mappazzone",A().reduce((n,a)=>n+okList(a).length,0)],["imp","Opzioni",0]];
+  const t=[["scopri","Scopri",pend().length],["preferiti","Mix",A().reduce((n,a)=>n+okList(a).length,0)],["imp","Opzioni",0]];
   $("#tabs").innerHTML=t.map(([k,l,n])=>`<button type="button" data-v="${k}"${view===k?' aria-current="page"':""}>${l}${n?`<span class="n">${n}</span>`:""}</button>`).join("");
 }
 function render(){
@@ -185,12 +185,12 @@ const cut=s=>{s=String(s).replace(/<[^>]+>/g,"").trim();if(s.length<=360)return 
 
 /* ============ temi ============ */
 const TEMI=[
- {id:"per-te",n:"Per te",d:"Un artista alla volta, simile a quelli che ti piacciono."},
- {id:"italiana",n:"Musica italiana",d:"Artisti e canzoni italiane che probabilmente non conosci.",tags:["italian","italiano","cantautore","italian pop","italian rock","indie italiano","italian hip hop"]},
- {id:"malinconico",n:"Malinconico ma non troppo",d:"Canzoni un po' tristi, alla Placebo o agli Smashing Pumpkins, senza esagerare.",tags:["melancholic","dream pop","alternative rock","shoegaze","post-punk","sadcore"],seeds:["Placebo","The Smashing Pumpkins","The Cure","Mazzy Star"]},
- {id:"happy",n:"Happy Songs",d:"Canzoni che danno forza e allegria per lavorare.",tags:["feel good","happy","upbeat","funk","reggae","disco","soul"]},
- {id:"strumenta",n:"Strumenta",d:"Solo musica strumentale, senza testo.",tags:["instrumental","post-rock","ambient","jazz fusion","math rock"]},
- {id:"sottocassa",n:"Sotto cassa",d:"Rave, techno, goa, hardcore, trance.",tags:["trance","goa trance","psytrance","hard techno","hardcore","techno","rave","gabber"]}
+ {id:"per-te",n:"Per te",d:"Nuovi nomi che suonano come i tuoi preferiti: tu swipi, Sounder impara."},
+ {id:"italiana",n:"Musica italiana",d:"Voci italiane fuori dai radar: scopri chi sta scrivendo la prossima canzone che canterai.",tags:["italian","italiano","cantautore","italian pop","italian rock","indie italiano","italian hip hop"]},
+ {id:"malinconico",n:"Malinconico ma non troppo",d:"Malinconia da portare in giro con il sorriso: Placebo e Smashing Pumpkins in versione pomeriggio di pioggia.",tags:["melancholic","dream pop","alternative rock","shoegaze","post-punk","sadcore"],seeds:["Placebo","The Smashing Pumpkins","The Cure","Mazzy Star"]},
+ {id:"happy",n:"Happy Songs",d:"Energia pura per le giornate di lavoro: ritornelli che spingono e groove che fanno partire il lunedì.",tags:["feel good","happy","upbeat","funk","reggae","disco","soul"]},
+ {id:"strumenta",n:"Strumenta",d:"Niente parole, solo suono: musica da ascoltare a occhi chiusi o da lasciare in cuffia mentre lavori.",tags:["instrumental","post-rock","ambient","jazz fusion","math rock"]},
+ {id:"sottocassa",n:"Sotto cassa",d:"Cassa dritta, bpm alti e pista infinita: rave, techno, goa, hardcore e trance.",tags:["trance","goa trance","psytrance","hard techno","hardcore","techno","rave","gabber"]}
 ];
 let tema="per-te";const tried={};
 const temaOf=a=>a.tema||"per-te";
@@ -262,7 +262,7 @@ function infoPanel(a,b,key){
 }
 function songRow(a,b,i){
   const hearted=b.st==="ok",key=a.id+"|"+i,open=openInfo.has(key);
-  return `<div class="srow"><div class="song${nowUri()===b.uri?" on":""}" data-aid="${esc(a.id)}" data-i="${i}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn info${open?" on":""}" type="button" data-info="${esc(key)}" aria-expanded="${open}" aria-label="Significato e curiosità di ${esc(b.t)}">${IC.info}</button><button class="rbtn known" type="button" data-known="${esc(a.id)}" data-i="${i}" aria-label="Già la conosco" title="Già la conosco">${IC.known}</button><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Mi ispira: aggiungila al mappazzone" title="Mi ispira" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>${open?infoPanel(a,b,key):""}</div>`;
+  return `<div class="srow"><div class="song${nowUri()===b.uri?" on":""}" data-aid="${esc(a.id)}" data-i="${i}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn info${open?" on":""}" type="button" data-info="${esc(key)}" aria-expanded="${open}" aria-label="Significato e curiosità di ${esc(b.t)}">${IC.info}</button><button class="rbtn known" type="button" data-known="${esc(a.id)}" data-i="${i}" aria-label="Già la conosco" title="Già la conosco">${IC.known}</button><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Mi ispira: aggiungila al Sounder Mix" title="Mi ispira" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>${open?infoPanel(a,b,key):""}</div>`;
 }
 async function aiInfo(a,b){
   const r=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"content-type":"application/json",Authorization:"Bearer "+cfg("gk")},body:JSON.stringify({model:"llama-3.3-70b-versatile",temperature:.3,max_tokens:600,response_format:{type:"json_object"},messages:[{role:"system",content:"Sei un esperto di musica. Rispondi sempre e solo in italiano, con JSON valido."},{role:"user",content:`Canzone «${b.t}» di ${a.nome}${b.al?` (album ${b.al})`:""}. Rispondi con JSON: {"s":"una frase sul tema, max 18 parole","a":"2-3 frasi su cosa racconta il testo, con parole tue","c":["un fatto certo"]}. In c metti solo fatti di cui sei sicuro, altrimenti lista vuota. Se non conosci la canzone, lascia s e a vuoti: non inventare.`}]})});
@@ -295,7 +295,7 @@ function themeBar(){
 }
 function renderDeck(){
   const T=TEMI.find(x=>x.id===tema)||TEMI[0],q=pend(tema),el=$("#view");
-  let h=`<h1 class="pg">Scopri</h1>${themeBar()}<p class="sub">${esc(T.d)} Swipe a destra se ti piace, a sinistra se no. Il cuore su una canzone la aggiunge al tuo mappazzone.</p>`;
+  let h=`<h1 class="pg">Scopri</h1>${themeBar()}<p class="sub">${esc(T.d)}</p>`;
   if(!q.length&&!busy&&!tried[tema]&&logged()&&cfg("lfm")){tried[tema]=1;setTimeout(()=>discover(false,tema),0)}
   if(!q.length){
     h+=`<div class="empty">${busy?`<span><i class="spin"></i>Cerco artisti per «${esc(T.n)}»…</span>`:`<span>Per ora non ho altri artisti da proporti.</span><button class="btn" type="button" data-discover>Cerca artisti</button>`}</div>`;
@@ -311,7 +311,8 @@ function renderDeck(){
     ${a.info?`<p class="about">${esc(a.info)}${a.wiki?` <a href="${esc(a.wiki)}" target="_blank" rel="noopener">Wikipedia</a>`:""}</p>`:""}
     <div class="songs">${vis(a).slice(0,3).map(({b,i})=>songRow(a,b,i)).join("")}</div><p class="tip">Swipe sulle canzoni: a destra la salvi, a sinistra la togli.</p></div></article></div>
     <div class="acts"><button class="big no" type="button" data-dno aria-label="Non mi piace ${esc(a.nome)}">${IC.x}</button><button class="big ok" type="button" data-dok aria-label="Mi piace ${esc(a.nome)}">${IC.ok}</button></div>
-    <p class="count">${q.length} da valutare${busy?" · cerco altri simili…":""}</p>`;
+    <p class="count">${q.length} da valutare${busy?" · cerco altri simili…":""}</p>
+    <p class="how">Swipe a destra se l'artista ti piace, a sinistra se no. Sulle canzoni: cuore per aggiungerle al tuo Sounder Mix, «i» per significato e curiosità.</p>`;
   el.innerHTML=h;
 }
 function decide(id,yes){
@@ -371,7 +372,7 @@ const swipe=(()=>{
 /* ============ swipe sulle singole canzoni ============ */
 function keepSong(id,i){
   const a=S.artists[id],b=a&&a.brani[i];if(!b)return;
-  if(b.st==="ok"){toast("È già nel tuo mappazzone");render();return}
+  if(b.st==="ok"){toast("È già nel tuo Sounder Mix");render();return}
   setLike(a,b,true);
 }
 async function moreSongs(a){
@@ -389,13 +390,13 @@ async function moreSongs(a){
 }
 function knownSong(id,i){
   const a=S.artists[id],b=a&&a.brani[i];if(!b)return;
-  const prev=b.st;b.st="no";b.known=1;save();render();
+  const prev=b.st;b.st="no";b.known=1;save();render();mixDel(b);
   toast("Segnata come già conosciuta",{l:"Annulla",f:()=>{b.st=prev;delete b.known;save();render()}});
   moreSongs(a);
 }
 function dropSong(id,i){
   const a=S.artists[id],b=a&&a.brani[i];if(!b)return;
-  const prev=b.st;b.st="no";save();render();
+  const prev=b.st;b.st="no";save();render();mixDel(b);
   toast("Canzone tolta",{l:"Annulla",f:()=>{b.st=prev;save();render()}});
   moreSongs(a);
 }
@@ -438,11 +439,12 @@ const songSwipe=(()=>{
   addEventListener("pointerup",end);addEventListener("pointercancel",end);
 })();
 
-/* ============ Mappazzone ============ */
+/* ============ Sounder Mix ============ */
 const okList=a=>a.brani.filter(b=>b.st==="ok");
 function setLike(a,b,on){
   const prev=b.st;b.st=on?"ok":undefined;save();render();
-  toast(on?"Aggiunta al tuo mappazzone":"Tolta dal mappazzone",{l:"Annulla",f:()=>{b.st=prev;save();render()}});
+  toast(on?"Aggiunta al tuo Sounder Mix":"Tolta dal Sounder Mix",{l:"Annulla",f:()=>{b.st=prev;save();render();syncOne(a,b)}});
+  syncOne(a,b);
 }
 function heart(id,i){const a=S.artists[id],b=a&&a.brani[i];if(b)setLike(a,b,b.st!=="ok")}
 /* cosa ha imparato l'app dai tuoi gusti: parole dei generi degli artisti */
@@ -460,28 +462,47 @@ function renderFav(){
   const L=A().filter(a=>a.stato==="aggiunto"||okList(a).length).sort((x,y)=>okList(y).length-okList(x).length||String(y.dec).localeCompare(String(x.dec)));
   const total=A().reduce((n,a)=>n+okList(a).length,0),has=S.playlistId,t=tasteVec();
   const more=topN(t.pos,6),less=topN(Object.fromEntries(Object.entries(t.neg).filter(([w,n])=>n>(t.pos[w]||0))),4);
-  let h=`<h1 class="pg">Mappazzone</h1><p class="sub">Le canzoni che ti hanno ispirato. Da qui Sounder impara i tuoi gusti e ti propone artisti sempre più affini.</p>`;
-  h+=`<div class="card" style="margin-bottom:16px"><h3>${total} canzon${total===1?"e":"i"} · ${L.length} artist${L.length===1?"a":"i"}</h3>${more.length?`<div class="sim"><span class="l">Ti ispira</span>${more.map(w=>`<span class="chip">${esc(w)}</span>`).join("")}</div>`:`<small>Tocca il cuore sulle canzoni che ti ispirano: più ne aggiungi, meglio ti conosco.</small>`}${less.length?`<div class="sim"><span class="l">Meno</span>${less.map(w=>`<span class="chip">${esc(w)}</span>`).join("")}</div>`:""}</div>`;
-  h+=`<div class="bar"><p>${has?`Playlist «Sounder» su Spotify: ${S.playlistN} brani, aggiornata il ${esc(S.playlistDate)}. <a class="open" href="https://open.spotify.com/playlist/${esc(S.playlistId)}" target="_blank" rel="noopener">Apri</a>`:"Se vuoi, porta il mappazzone su Spotify in una sola playlist. È facoltativo: l'app impara dai tuoi cuori anche senza."}</p><button class="btn ghostb" type="button" data-playlist${busy||!total?" disabled":""}>${has?"Aggiorna la playlist":"Esporta su Spotify"}</button></div>`;
-  if(!L.length)h+=`<div class="empty">Il mappazzone è vuoto: in Scopri tocca il cuore sulle canzoni che ti ispirano.</div>`;
-  h+=L.map(a=>{const n=okList(a).length,open=openArtist===a.id;return `<div class="arow"><button class="ahead" type="button" data-open="${esc(a.id)}" aria-expanded="${open}"><span class="av"${a.img?` style="background-image:url('${esc(a.img)}')"`:` style="background:hsl(${hue(a.nome)} 55% 35%)"`}>${a.img?"":esc(initials(a.nome))}</span><span class="tx"><b>${esc(a.nome)}</b><i>${n?`${n} canzon${n===1?"e":"i"} nel mappazzone`:esc(a.genere||"")}</i></span></button>${open?`<div class="abody">${a.info?`<p class="about">${esc(a.info)}</p>`:""}<div class="songs">${vis(a).map(({b,i})=>songRow(a,b,i)).join("")}</div><div class="mini"><button class="btn" type="button" data-playall="${esc(a.id)}">${IC.play}Ascolta tutto</button><button class="btn ghostb" type="button" data-remove="${esc(a.id)}">Togli dal mappazzone</button></div></div>`:""}</div>`}).join("");
+  let h=`<h1 class="pg">Sounder Mix</h1><p class="sub">La tua raccolta di canzoni che ti hanno acceso qualcosa. Più ne aggiungi, meglio Sounder ti conosce.</p>`;
+  h+=`<div class="card" style="margin-bottom:16px"><h3>${total} canzon${total===1?"e":"i"} · ${L.length} artist${L.length===1?"a":"i"}</h3>${more.length?`<div class="sim"><span class="l">Ti ispira</span>${more.map(w=>`<span class="chip">${esc(w)}</span>`).join("")}</div>`:`<small>Tocca il cuore sulle canzoni che ti ispirano.</small>`}${less.length?`<div class="sim"><span class="l">Meno</span>${less.map(w=>`<span class="chip">${esc(w)}</span>`).join("")}</div>`:""}</div>`;
+  const miss=A().flatMap(x=>okList(x)).filter(b=>!b.uri||!(S.exp||[]).includes(b.uri)).length;
+  h+=`<div class="bar"><p>${has?`La playlist «Sounder Mix» è su Spotify: ${S.playlistN} brani. Ogni canzone che aggiungi o togli qui si aggiorna da sola; non si azzera mai. <a class="open" href="https://open.spotify.com/playlist/${esc(S.playlistId)}" target="_blank" rel="noopener">Apri</a>`:"Vuoi anche una playlist su Spotify? Creala una volta sola: da lì in poi le canzoni nuove si aggiungono da sole."}</p><button class="btn ghostb" type="button" data-playlist${busy||!total?" disabled":""}>${has?(miss?`Aggiungi ${miss} mancanti`:"Tutto allineato"):"Crea la playlist"}</button></div>`;
+  if(!L.length)h+=`<div class="empty">Il tuo Sounder Mix è ancora vuoto: in Scopri tocca il cuore sulle canzoni che ti ispirano.</div>`;
+  h+=L.map(a=>{const n=okList(a).length,open=openArtist===a.id;return `<div class="arow"><button class="ahead" type="button" data-open="${esc(a.id)}" aria-expanded="${open}"><span class="av"${a.img?` style="background-image:url('${esc(a.img)}')"`:` style="background:hsl(${hue(a.nome)} 55% 35%)"`}>${a.img?"":esc(initials(a.nome))}</span><span class="tx"><b>${esc(a.nome)}</b><i>${n?`${n} canzon${n===1?"e":"i"} nel Mix`:esc(a.genere||"")}</i></span></button>${open?`<div class="abody">${a.info?`<p class="about">${esc(a.info)}</p>`:""}<div class="songs">${vis(a).map(({b,i})=>songRow(a,b,i)).join("")}</div><div class="mini"><button class="btn" type="button" data-playall="${esc(a.id)}">${IC.play}Ascolta tutto</button><button class="btn ghostb" type="button" data-remove="${esc(a.id)}">Togli dal Mix</button></div></div>`:""}</div>`}).join("");
   $("#view").innerHTML=h;
   L.filter(a=>openArtist===a.id).forEach(enrich);
 }
+async function mixAdd(a,b){
+  if(!S.playlistId||!logged())return;
+  try{
+    if(!b.uri)await spResolve(a,b);
+    if(!b.uri||(S.exp||[]).includes(b.uri))return;
+    await api(`/playlists/${S.playlistId}/items`,{method:"POST",body:{uris:[b.uri]}});
+    S.exp=[...(S.exp||[]),b.uri];S.playlistN=(S.playlistN||0)+1;save();render();
+  }catch(e){if(e.code===404){S.playlistId="";S.exp=[];save()}}
+}
+async function mixDel(b){
+  if(!S.playlistId||!b.uri||!(S.exp||[]).includes(b.uri))return;
+  try{
+    await api(`/playlists/${S.playlistId}/items`,{method:"DELETE",body:{items:[{uri:b.uri}]}});
+    S.exp=S.exp.filter(x=>x!==b.uri);S.playlistN=Math.max(0,(S.playlistN||1)-1);save();render();
+  }catch(e){}
+}
+function syncOne(a,b){if(b.st==="ok")mixAdd(a,b);else mixDel(b)}
 async function makePlaylist(){
   if(busy)return;
-  const songs=A().flatMap(a=>okList(a).map(b=>({a,b}))).slice(0,100);
-  if(!songs.length){toast("Aggiungi prima qualche canzone al mappazzone");return}
+  const songs=A().flatMap(a=>okList(a).map(b=>({a,b})));
+  if(!songs.length){toast("Aggiungi prima qualche canzone al Sounder Mix");return}
   busy=true;render();
   try{
+    let fresh=false;
+    if(!S.playlistId){const p=await api("/me/playlists",{method:"POST",body:{name:"Sounder Mix",description:"Le canzoni che mi hanno acceso qualcosa, da Sounder",public:false}});S.playlistId=p.id;S.exp=[];S.playlistN=0;fresh=true}
     for(const {a,b} of songs)if(!b.uri)try{await spResolve(a,b)}catch(e){}
-    const uris=[...new Set(songs.map(x=>x.b.uri).filter(Boolean))];
-    if(!uris.length){toast("Non trovo queste canzoni su Spotify");return}
-    if(!S.playlistId){const p=await api("/me/playlists",{method:"POST",body:{name:"Sounder",description:"Il mio mappazzone musicale, da Sounder",public:false}});S.playlistId=p.id}
-    await api(`/playlists/${S.playlistId}/items`,{method:"PUT",body:{uris}});
-    S.playlistN=uris.length;S.playlistDate=today();save();toast("Playlist Sounder aggiornata");
+    const todo=[...new Set(songs.map(x=>x.b.uri).filter(u=>u&&!(S.exp||[]).includes(u)))];
+    for(let i=0;i<todo.length;i+=50){const part=todo.slice(i,i+50);await api(`/playlists/${S.playlistId}/items`,{method:"POST",body:{uris:part}});S.exp=[...(S.exp||[]),...part];S.playlistN=(S.playlistN||0)+part.length}
+    S.playlistDate=today();save();
+    toast(fresh?`Playlist «Sounder Mix» creata con ${todo.length} brani`:todo.length?`Aggiunte ${todo.length} canzoni`:"Era già tutto allineato");
   }catch(e){
-    if(e.code===404&&S.playlistId){S.playlistId="";save()}
+    if(e.code===404&&S.playlistId){S.playlistId="";S.exp=[];save()}
     toast(errMsg(e));
   }finally{busy=false;render()}
 }
@@ -581,7 +602,7 @@ document.addEventListener("click",e=>{
   if((x=T("[data-known]"))){knownSong(x.dataset.known,Number(x.dataset.i));return}
   if((x=T("[data-heart]"))){heart(x.dataset.heart,Number(x.dataset.i));return}
   if((x=T("[data-open]"))){openArtist=openArtist===x.dataset.open?null:x.dataset.open;render();return}
-  if((x=T("[data-remove]"))){const a=S.artists[x.dataset.remove];if(a){a.brani.forEach(b=>{if(b.st==="ok")delete b.st});a.stato="nuovo";a.dec="";a.ord=A().reduce((m,y)=>Math.max(m,y.ord||0),0)+1;save();openArtist=null;render();toast(`${a.nome} è tornato in Scopri`)}return}
+  if((x=T("[data-remove]"))){const a=S.artists[x.dataset.remove];if(a){a.brani.forEach(b=>{if(b.st==="ok"){delete b.st;mixDel(b)}});a.stato="nuovo";a.dec="";a.ord=A().reduce((m,y)=>Math.max(m,y.ord||0),0)+1;save();openArtist=null;render();toast(`${a.nome} è tornato in Scopri`)}return}
   if(T("[data-playlist]")){makePlaylist();return}
   if(T("[data-pp]")){toggle();return}
   if(T("[data-next]")){nextTrack();return}
