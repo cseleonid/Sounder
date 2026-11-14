@@ -202,6 +202,7 @@ const TEMI=[
  {id:"malinconico",n:"Malinconico ma non troppo",d:"Malinconia da portare in giro con il sorriso: Placebo e Smashing Pumpkins in versione pomeriggio di pioggia.",tags:["melancholic","dream pop","alternative rock","shoegaze","post-punk","sadcore"],seeds:["Placebo","The Smashing Pumpkins","The Cure","Mazzy Star"]},
  {id:"happy",n:"Happy Songs",d:"Energia pura per le giornate di lavoro: ritornelli che spingono e groove che fanno partire il lunedì.",tags:["feel good","happy","upbeat","funk","reggae","disco","soul"]},
  {id:"strumenta",n:"Strumenta",d:"Niente parole, solo suono: musica da ascoltare a occhi chiusi o da lasciare in cuffia mentre lavori.",tags:["instrumental","post-rock","ambient","jazz fusion","math rock"]},
+ {id:"pietre",n:"Pietre musicali",d:"Gli artisti e i gruppi che hanno fatto la storia, dagli anni '70 ai 2000: le fondamenta di ogni playlist."},
  {id:"sottocassa",n:"Sotto cassa",d:"Cassa dritta, bpm alti e pista infinita: rave, techno, goa, hardcore e trance.",tags:["trance","goa trance","psytrance","hard techno","hardcore","techno","rave","gabber"]}
 ];
 let tema=cfg("tema")||"per-te";if(!TEMI.some(t=>t.id===tema))tema="per-te";const tried={};
@@ -227,24 +228,28 @@ async function discover(manual,t){
   const T=TEMI.find(x=>x.id===(t||tema))||TEMI[0];
   if(busy)return;
   if(!logged()){if(manual){view="imp";render();toast("Collegati prima a Spotify")}return}
-  if(!cfg("lfm")){if(manual){view="imp";render();toast("Inserisci la chiave Last.fm per cercare artisti")}return}
+  if(T.id!=="pietre"&&!cfg("lfm")){if(manual){view="imp";render();toast("Inserisci la chiave Last.fm per cercare artisti")}return}
   busy=true;render();
   try{
     const known=new Set(A().map(a=>norm(a.nome)));
-    const c=await candidates(T,known);
-    if(c.err){toast(c.err);return}
-    let added=0,ord=A().reduce((m,a)=>Math.max(m,a.ord||0),0);
-    const tv=tasteVec();
-    const infos=await Promise.all(c.list.slice(0,16).map(async x=>{
-      try{
-        const inf=await lfm("artist.getinfo",{artist:x.nome,lang:"it",autocorrect:1});
-        const L=Number(inf.artist?.stats?.listeners||0);
-        const tg=(inf.artist?.tags?.tag||[]).map(g=>g.name);
-        const ws=tg.flatMap(g=>g.toLowerCase().split(/[^a-zàèéìòù]+/)).filter(w=>w.length>3);
-        return {x,inf,L,tg,sc:ws.reduce((n,w)=>n+(tv.pos[w]||0)-(tv.neg[w]||0),0)};
-      }catch(e){return null}
-    }));
-    const ranked=infos.filter(i=>i&&i.L<=700000).sort((p,q)=>(q.sc-p.sc)||(Math.random()-.5));
+    let ranked,ord=A().reduce((m,a)=>Math.max(m,a.ord||0),0),added=0;
+    if(T.id==="pietre"){
+      ranked=shuffle(PIETRE.filter(([n])=>!known.has(norm(n)))).slice(0,14).map(([n,d,g])=>({x:{nome:n,from:[]},inf:{},tg:["anni "+(d==="00"?"2000":"'"+d),g]}));
+    }else{
+      const c=await candidates(T,known);
+      if(c.err){toast(c.err);return}
+      const tv=tasteVec();
+      const infos=await Promise.all(c.list.slice(0,16).map(async x=>{
+        try{
+          const inf=await lfm("artist.getinfo",{artist:x.nome,lang:"it",autocorrect:1});
+          const L=Number(inf.artist?.stats?.listeners||0);
+          const tg=(inf.artist?.tags?.tag||[]).map(g=>g.name);
+          const ws=tg.flatMap(g=>g.toLowerCase().split(/[^a-zàèéìòù]+/)).filter(w=>w.length>3);
+          return {x,inf,L,tg,sc:ws.reduce((n,w)=>n+(tv.pos[w]||0)-(tv.neg[w]||0),0)};
+        }catch(e){return null}
+      }));
+      ranked=infos.filter(i=>i&&i.L<=700000).sort((p,q)=>(q.sc-p.sc)||(Math.random()-.5));
+    }
     for(const {x,inf,tg} of ranked){
       if(added>=4)break;
       try{
@@ -308,7 +313,7 @@ function themeBar(){
 function renderDeck(){
   const T=TEMI.find(x=>x.id===tema)||TEMI[0],q=pend(tema),el=$("#view");
   let h=`<h1 class="pg">Scopri</h1>${themeBar()}<p class="sub">${esc(T.d)}</p>`;
-  if(!q.length&&!busy&&!tried[tema]&&logged()&&cfg("lfm")){tried[tema]=1;setTimeout(()=>discover(false,tema),0)}
+  if(!q.length&&!busy&&!tried[tema]&&logged()&&(cfg("lfm")||tema==="pietre")){tried[tema]=1;setTimeout(()=>discover(false,tema),0)}
   if(!q.length){
     h+=`<div class="empty">${busy?`<span><i class="spin"></i>Cerco artisti per «${esc(T.n)}»…</span>`:`<span>Per ora non ho altri artisti da proporti.</span><button class="btn" type="button" data-discover>Cerca artisti</button>`}</div>`;
     el.innerHTML=h;return;
