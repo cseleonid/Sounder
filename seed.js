@@ -21,3 +21,7 @@ const SEED=[
 ["the-midnight","The Midnight","Synthwave",["Kavinsky"],"Duo di Los Angeles (Tyler Lyle e il danese Tim McEwan): synthwave nostalgica che suona come la colonna sonora di un film anni '80.","n",[["Days of Thunder","28uitw2AXQQIUHvSJW9qy6","Days of Thunder","2014"],["Sunset","6mB9A9YLbY4jxpKX5EYAnT","Endless Summer","2016"]]],
 ["third-world","Third World","Reggae pop / funk",["Steel Pulse","Alpha Blondy"],"Band giamaicana attiva dal 1973: unisce reggae, funk, soul e disco con un suono solare e ballabile.","a",[["Now That We Found Love","6k0CTp2tkRy7KndUhAmzQb","25th Anniversary","1978"],["Try Jah Love","5QmTeojhyte2qMK0016G7B","Under the Magic Sun","1982"]]]
 ];
+
+/* Canzoni accettate e rifiutate nel vecchio desk: servono a far partire il mappazzone con i tuoi gusti */
+const OK_SEED=["Musica leggerissima","Salirò","Onda alta","Dove si balla","Quelli che benpensano","Pedala","You Can Get It If You Really Want","The Harder They Come","Amare","Una musica può fare","Il timido ubriaco","La vita com'è","Regret","Overnight","Tieduprightnow","Chase the Sun","Who Said (Stuck in the UK)","L'estate sta finendo","Now That We Found Love","Try Jah Love"];
+const NO_SEED=["La paranza","Le cose in comune","Reggae Night","Mas que nada","Ciao ciao","Self Control","Il battito animale","Vamos a la playa","No tengo dinero"];

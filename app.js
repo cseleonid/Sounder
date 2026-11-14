@@ -19,6 +19,11 @@ function load(){
     SEED.forEach(([id,nome,genere,rif,info,st,br],i)=>{S.artists[id]={id,nome,genere,rif,info,stato:st==="a"?"aggiunto":st==="i"?"ignorato":"nuovo",ord:i,dec:st==="n"?"":"2026-11-13",brani:br.map(([t,tid,al,an])=>({t,uri:tid?"spotify:track:"+tid:"",al,an}))}});
     S.t=0;saveLocal();
   }
+  if(!S.mig){
+    const ok=new Set(OK_SEED),no=new Set(NO_SEED);
+    Object.values(S.artists).forEach(a=>a.brani.forEach(b=>{if(b.st)return;if((b.uri&&S.hearts.includes(b.uri))||ok.has(b.t))b.st="ok";else if(no.has(b.t))b.st="no"}));
+    S.mig=1;saveLocal();
+  }
 }
 const strip=(k,v)=>k.startsWith("_")?undefined:v;
 function save(){S.t=Date.now();try{localStorage.setItem("sd-data",JSON.stringify(S,strip))}catch(e){}push()}
@@ -81,7 +86,7 @@ function toast(msg,act){
   toast._t=setTimeout(()=>el.hidden=true,act?6000:3500);
 }
 function tabs(){
-  const t=[["scopri","Scopri",pend().length],["preferiti","Preferiti",liked().length],["imp","Opzioni",0]];
+  const t=[["scopri","Scopri",pend().length],["preferiti","Mappazzone",A().reduce((n,a)=>n+okList(a).length,0)],["imp","Opzioni",0]];
   $("#tabs").innerHTML=t.map(([k,l,n])=>`<button type="button" data-v="${k}"${view===k?' aria-current="page"':""}>${l}${n?`<span class="n">${n}</span>`:""}</button>`).join("");
 }
 function render(){
@@ -196,8 +201,8 @@ async function candidates(T,known){
   const out={};
   const add=(name,from,w)=>{const k=norm(name);if(!k||known.has(k))return;const o=out[k]||(out[k]={nome:name,s:0,from:[]});o.s+=w;if(from&&!o.from.includes(from))o.from.push(from)};
   if(T.id==="per-te"){
-    const base=shuffle(liked().slice(0,10)).slice(0,5);
-    if(!base.length)return {err:"Metti qualche artista tra i preferiti: da lì cerco quelli simili"};
+    const base=A().filter(a=>a.stato==="aggiunto"||okList(a).length).map(a=>[Math.pow(Math.random(),1/(okList(a).length*2+1)),a]).sort((p,q)=>q[0]-p[0]).slice(0,5).map(x=>x[1]);
+    if(!base.length)return {err:"Metti il cuore a qualche canzone: da lì capisco cosa ti piace"};
     await Promise.all(base.map(async a=>{try{const j=await lfm("artist.getsimilar",{artist:a.nome,limit:30,autocorrect:1});(j.similarartists?.artist||[]).forEach(x=>add(x.name,a.nome,Number(x.match)||0))}catch(e){}}));
     return {list:Object.values(out).sort((x,y)=>y.s-x.s)};
   }
@@ -216,19 +221,26 @@ async function discover(manual,t){
     const known=new Set(A().map(a=>norm(a.nome)));
     const c=await candidates(T,known);
     if(c.err){toast(c.err);return}
-    let added=0,ord=A().reduce((m,a)=>Math.max(m,a.ord||0),0),checked=0;
-    for(const x of c.list){
-      if(added>=4||checked>=20)break;checked++;
+    let added=0,ord=A().reduce((m,a)=>Math.max(m,a.ord||0),0);
+    const tv=tasteVec();
+    const infos=await Promise.all(c.list.slice(0,16).map(async x=>{
       try{
         const inf=await lfm("artist.getinfo",{artist:x.nome,lang:"it",autocorrect:1});
         const L=Number(inf.artist?.stats?.listeners||0);
-        if(L>700000)continue;
+        const tg=(inf.artist?.tags?.tag||[]).map(g=>g.name);
+        const ws=tg.flatMap(g=>g.toLowerCase().split(/[^a-zàèéìòù]+/)).filter(w=>w.length>3);
+        return {x,inf,L,tg,sc:ws.reduce((n,w)=>n+(tv.pos[w]||0)-(tv.neg[w]||0),0)};
+      }catch(e){return null}
+    }));
+    const ranked=infos.filter(i=>i&&i.L<=700000).sort((p,q)=>(q.sc-p.sc)||(Math.random()-.5));
+    for(const {x,inf,tg} of ranked){
+      if(added>=4)break;
+      try{
         const sp=await spArtist(x.nome);if(!sp)continue;
         const br=await spTracks(sp);if(br.length<2)continue;
         const w=await wiki(x.nome);
-        const tags=(inf.artist?.tags?.tag||[]).map(g=>g.name).slice(0,3).join(" · ");
         const id=slug(sp.name);if(S.artists[id])continue;
-        S.artists[id]={id,nome:sp.name,genere:tags,rif:x.from.slice(0,2),info:w?w.t:cut(inf.artist?.bio?.summary||""),wiki:w?w.u:"",spId:sp.id,img:sp.images?.[0]?.url||"",stato:"nuovo",ord:++ord,dec:"",brani:br,scoperta:1,tema:T.id==="per-te"?"":T.id};
+        S.artists[id]={id,nome:sp.name,genere:tg.slice(0,3).join(" · "),rif:x.from.slice(0,2),info:w?w.t:cut(inf.artist?.bio?.summary||""),wiki:w?w.u:"",spId:sp.id,img:sp.images?.[0]?.url||"",stato:"nuovo",ord:++ord,dec:"",brani:br,scoperta:1,tema:T.id==="per-te"?"":T.id};
         known.add(norm(sp.name));added++;save();render();
       }catch(e){if(e.code===403||e.code==="login")throw e}
     }
@@ -249,8 +261,8 @@ function infoPanel(a,b,key){
   return `<div class="sinfo">${g.s?`<h4>${g.w?"Dalla voce di Wikipedia":"Significato"}</h4><p class="about">${esc(g.s)}${g.src?` <a href="${esc(g.src)}" target="_blank" rel="noopener">Leggi tutto</a>`:""}</p>`:""}${g.a?`<h4>Cosa racconta</h4><p class="about">${esc(g.a)}</p>`:""}${c.length?`<h4>Curiosità</h4><ul>${c.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}${g.ai?`<small class="note">Scritto da Claude: può contenere errori.</small>`:""}</div>`;
 }
 function songRow(a,b,i){
-  const hearted=S.hearts.includes(b.uri),key=a.id+"|"+i,open=openInfo.has(key);
-  return `<div class="srow"><div class="song${nowUri()===b.uri?" on":""}" data-aid="${esc(a.id)}" data-i="${i}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn info${open?" on":""}" type="button" data-info="${esc(key)}" aria-expanded="${open}" aria-label="Significato e curiosità di ${esc(b.t)}">${IC.info}</button><button class="rbtn known" type="button" data-known="${esc(a.id)}" data-i="${i}" aria-label="Già la conosco" title="Già la conosco">${IC.known}</button><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Salva tra i brani che ti piacciono" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>${open?infoPanel(a,b,key):""}</div>`;
+  const hearted=b.st==="ok",key=a.id+"|"+i,open=openInfo.has(key);
+  return `<div class="srow"><div class="song${nowUri()===b.uri?" on":""}" data-aid="${esc(a.id)}" data-i="${i}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn info${open?" on":""}" type="button" data-info="${esc(key)}" aria-expanded="${open}" aria-label="Significato e curiosità di ${esc(b.t)}">${IC.info}</button><button class="rbtn known" type="button" data-known="${esc(a.id)}" data-i="${i}" aria-label="Già la conosco" title="Già la conosco">${IC.known}</button><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Mi ispira: aggiungila al mappazzone" title="Mi ispira" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>${open?infoPanel(a,b,key):""}</div>`;
 }
 async function aiInfo(a,b){
   const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":cfg("ak"),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-haiku-5-5",max_tokens:700,messages:[{role:"user",content:`Canzone «${b.t}» di ${a.nome}${b.al?` (album ${b.al})`:""}. Rispondi solo con JSON in italiano: {"s":"una frase sul tema, max 18 parole","a":"2-3 frasi su cosa racconta il testo, con parole tue","c":["un fatto certo"]}. In c metti solo fatti di cui sei sicuro, altrimenti lista vuota. Se non conosci la canzone, lascia s e a vuoti.`}]})});
@@ -282,7 +294,7 @@ function themeBar(){
 }
 function renderDeck(){
   const T=TEMI.find(x=>x.id===tema)||TEMI[0],q=pend(tema),el=$("#view");
-  let h=`<h1 class="pg">Scopri</h1>${themeBar()}<p class="sub">${esc(T.d)} Swipe a destra se ti piace, a sinistra se no.</p>`;
+  let h=`<h1 class="pg">Scopri</h1>${themeBar()}<p class="sub">${esc(T.d)} Swipe a destra se ti piace, a sinistra se no. Il cuore su una canzone la aggiunge al tuo mappazzone.</p>`;
   if(!q.length&&!busy&&!tried[tema]&&logged()&&cfg("lfm")){tried[tema]=1;setTimeout(()=>discover(false,tema),0)}
   if(!q.length){
     h+=`<div class="empty">${busy?`<span><i class="spin"></i>Cerco artisti per «${esc(T.n)}»…</span>`:`<span>Per ora non ho altri artisti da proporti.</span><button class="btn" type="button" data-discover>Cerca artisti</button>`}</div>`;
@@ -356,11 +368,10 @@ const swipe=(()=>{
 
 
 /* ============ swipe sulle singole canzoni ============ */
-async function keepSong(id,i){
+function keepSong(id,i){
   const a=S.artists[id],b=a&&a.brani[i];if(!b)return;
-  b.st="ok";save();
-  if(b.uri&&S.hearts.includes(b.uri)){toast("Già tra i brani che ti piacciono");render();return}
-  await heart(id,i);
+  if(b.st==="ok"){toast("È già nel tuo mappazzone");render();return}
+  setLike(a,b,true);
 }
 async function moreSongs(a){
   if(!logged())return;
@@ -426,43 +437,46 @@ const songSwipe=(()=>{
   addEventListener("pointerup",end);addEventListener("pointercancel",end);
 })();
 
-/* ============ Preferiti ============ */
+/* ============ Mappazzone ============ */
+const okList=a=>a.brani.filter(b=>b.st==="ok");
+function setLike(a,b,on){
+  const prev=b.st;b.st=on?"ok":undefined;save();render();
+  toast(on?"Aggiunta al tuo mappazzone":"Tolta dal mappazzone",{l:"Annulla",f:()=>{b.st=prev;save();render()}});
+}
+function heart(id,i){const a=S.artists[id],b=a&&a.brani[i];if(b)setLike(a,b,b.st!=="ok")}
+/* cosa ha imparato l'app dai tuoi gusti: parole dei generi degli artisti */
+const words=a=>String(a.genere||"").toLowerCase().split(/[^a-zàèéìòù]+/).filter(w=>w.length>3&&!["with","from","pop"].includes(w));
+function tasteVec(){
+  const pos={},neg={};
+  A().forEach(a=>{
+    const ok=okList(a).length,no=a.brani.filter(b=>b.st==="no"&&!b.known).length+(a.stato==="ignorato"?2:0);
+    words(a).forEach(w=>{if(ok)pos[w]=(pos[w]||0)+ok;if(no)neg[w]=(neg[w]||0)+no});
+  });
+  return {pos,neg};
+}
+const topN=(o,n)=>Object.entries(o).sort((x,y)=>y[1]-x[1]).slice(0,n).map(x=>x[0]);
 function renderFav(){
-  const L=liked(),has=S.playlistId;
-  let h=`<h1 class="pg">Preferiti</h1><p class="sub">Gli artisti che hai accettato. Tocca il cuore su una canzone per salvarla.</p>`;
-  h+=`<div class="bar"><p>${has?`La tua playlist «Sounder»: ${S.playlistN} brani, aggiornata il ${esc(S.playlistDate)}. `:`${S.hearts.length} canzon${S.hearts.length===1?"e":"i"} con il cuore. `}${has?`<a class="open" href="https://open.spotify.com/playlist/${esc(S.playlistId)}" target="_blank" rel="noopener">Apri la playlist</a>`:"Con il tasto crei una sola playlist; quando la aggiorni resta sempre la stessa."}</p><button class="btn" type="button" data-playlist${busy?" disabled":""}>${has?"Aggiorna playlist":"Crea playlist"}</button></div>`;
-  if(!L.length)h+=`<div class="empty">Nessun preferito ancora: vai su Scopri e swipa a destra.</div>`;
-  h+=L.map(a=>`<div class="arow"><button class="ahead" type="button" data-open="${esc(a.id)}" aria-expanded="${openArtist===a.id}"><span class="av"${a.img?` style="background-image:url('${esc(a.img)}')"`:` style="background:hsl(${hue(a.nome)} 55% 35%)"`}>${a.img?"":esc(initials(a.nome))}</span><span class="tx"><b>${esc(a.nome)}</b><i>${esc(a.genere||"")}</i></span></button>${openArtist===a.id?`<div class="abody">${a.info?`<p class="about">${esc(a.info)}</p>`:""}<div class="songs">${vis(a).map(({b,i})=>songRow(a,b,i)).join("")}</div><div class="mini"><button class="btn" type="button" data-playall="${esc(a.id)}">${IC.play}Ascolta tutto</button><button class="btn ghostb" type="button" data-remove="${esc(a.id)}">Togli dai preferiti</button></div></div>`:""}</div>`).join("");
+  const L=A().filter(a=>a.stato==="aggiunto"||okList(a).length).sort((x,y)=>okList(y).length-okList(x).length||String(y.dec).localeCompare(String(x.dec)));
+  const total=A().reduce((n,a)=>n+okList(a).length,0),has=S.playlistId,t=tasteVec();
+  const more=topN(t.pos,6),less=topN(Object.fromEntries(Object.entries(t.neg).filter(([w,n])=>n>(t.pos[w]||0))),4);
+  let h=`<h1 class="pg">Mappazzone</h1><p class="sub">Le canzoni che ti hanno ispirato. Da qui Sounder impara i tuoi gusti e ti propone artisti sempre più affini.</p>`;
+  h+=`<div class="card" style="margin-bottom:16px"><h3>${total} canzon${total===1?"e":"i"} · ${L.length} artist${L.length===1?"a":"i"}</h3>${more.length?`<div class="sim"><span class="l">Ti ispira</span>${more.map(w=>`<span class="chip">${esc(w)}</span>`).join("")}</div>`:`<small>Tocca il cuore sulle canzoni che ti ispirano: più ne aggiungi, meglio ti conosco.</small>`}${less.length?`<div class="sim"><span class="l">Meno</span>${less.map(w=>`<span class="chip">${esc(w)}</span>`).join("")}</div>`:""}</div>`;
+  h+=`<div class="bar"><p>${has?`Playlist «Sounder» su Spotify: ${S.playlistN} brani, aggiornata il ${esc(S.playlistDate)}. <a class="open" href="https://open.spotify.com/playlist/${esc(S.playlistId)}" target="_blank" rel="noopener">Apri</a>`:"Se vuoi, porta il mappazzone su Spotify in una sola playlist. È facoltativo: l'app impara dai tuoi cuori anche senza."}</p><button class="btn ghostb" type="button" data-playlist${busy||!total?" disabled":""}>${has?"Aggiorna la playlist":"Esporta su Spotify"}</button></div>`;
+  if(!L.length)h+=`<div class="empty">Il mappazzone è vuoto: in Scopri tocca il cuore sulle canzoni che ti ispirano.</div>`;
+  h+=L.map(a=>{const n=okList(a).length,open=openArtist===a.id;return `<div class="arow"><button class="ahead" type="button" data-open="${esc(a.id)}" aria-expanded="${open}"><span class="av"${a.img?` style="background-image:url('${esc(a.img)}')"`:` style="background:hsl(${hue(a.nome)} 55% 35%)"`}>${a.img?"":esc(initials(a.nome))}</span><span class="tx"><b>${esc(a.nome)}</b><i>${n?`${n} canzon${n===1?"e":"i"} nel mappazzone`:esc(a.genere||"")}</i></span></button>${open?`<div class="abody">${a.info?`<p class="about">${esc(a.info)}</p>`:""}<div class="songs">${vis(a).map(({b,i})=>songRow(a,b,i)).join("")}</div><div class="mini"><button class="btn" type="button" data-playall="${esc(a.id)}">${IC.play}Ascolta tutto</button><button class="btn ghostb" type="button" data-remove="${esc(a.id)}">Togli dal mappazzone</button></div></div>`:""}</div>`}).join("");
   $("#view").innerHTML=h;
   L.filter(a=>openArtist===a.id).forEach(enrich);
 }
-async function heart(id,i){
-  const a=S.artists[id],b=a&&a.brani[i];if(!b)return;
-  try{
-    if(!b.uri)await spResolve(a,b);
-    if(!b.uri){toast("Non trovo questo brano su Spotify");return}
-    const on=S.hearts.includes(b.uri);
-    await api("/me/library?"+new URLSearchParams({uris:b.uri}),{method:on?"DELETE":"PUT"});
-    S.hearts=on?S.hearts.filter(x=>x!==b.uri):[...S.hearts,b.uri];save();render();
-    toast(on?"Tolta dai brani che ti piacciono":"Salvata nei brani che ti piacciono");
-  }catch(e){toast(errMsg(e))}
-}
-async function syncHearts(){
-  if(!logged())return;
-  const uris=A().flatMap(a=>a.brani.map(b=>b.uri)).filter(Boolean);
-  try{
-    const out=[];
-    for(let i=0;i<uris.length;i+=40){const part=uris.slice(i,i+40);const r=await api("/me/library/contains?"+new URLSearchParams({uris:part.join(",")}));if(Array.isArray(r))r.forEach((v,k)=>v&&out.push(part[k]))}
-    S.hearts=[...new Set(out)];save();render();
-  }catch(e){}
-}
 async function makePlaylist(){
   if(busy)return;
-  const uris=[...new Set(S.hearts)].slice(0,100);
-  if(!uris.length){toast("Metti il cuore a qualche canzone prima");return}
+  const songs=A().flatMap(a=>okList(a).map(b=>({a,b}))).slice(0,100);
+  if(!songs.length){toast("Aggiungi prima qualche canzone al mappazzone");return}
   busy=true;render();
   try{
-    if(!S.playlistId){const p=await api("/me/playlists",{method:"POST",body:{name:"Sounder",description:"Le canzoni che ti piacciono, da Sounder",public:false}});S.playlistId=p.id}
+    for(const {a,b} of songs)if(!b.uri)try{await spResolve(a,b)}catch(e){}
+    const uris=[...new Set(songs.map(x=>x.b.uri).filter(Boolean))];
+    if(!uris.length){toast("Non trovo queste canzoni su Spotify");return}
+    if(!S.playlistId){const p=await api("/me/playlists",{method:"POST",body:{name:"Sounder",description:"Il mio mappazzone musicale, da Sounder",public:false}});S.playlistId=p.id}
     await api(`/playlists/${S.playlistId}/items`,{method:"PUT",body:{uris}});
     S.playlistN=uris.length;S.playlistDate=today();save();toast("Playlist Sounder aggiornata");
   }catch(e){
@@ -566,7 +580,7 @@ document.addEventListener("click",e=>{
   if((x=T("[data-known]"))){knownSong(x.dataset.known,Number(x.dataset.i));return}
   if((x=T("[data-heart]"))){heart(x.dataset.heart,Number(x.dataset.i));return}
   if((x=T("[data-open]"))){openArtist=openArtist===x.dataset.open?null:x.dataset.open;render();return}
-  if((x=T("[data-remove]"))){const a=S.artists[x.dataset.remove];if(a){a.stato="nuovo";a.dec="";a.ord=A().reduce((m,y)=>Math.max(m,y.ord||0),0)+1;save();openArtist=null;render();toast(`${a.nome} è tornato in Scopri`)}return}
+  if((x=T("[data-remove]"))){const a=S.artists[x.dataset.remove];if(a){a.brani.forEach(b=>{if(b.st==="ok")delete b.st});a.stato="nuovo";a.dec="";a.ord=A().reduce((m,y)=>Math.max(m,y.ord||0),0)+1;save();openArtist=null;render();toast(`${a.nome} è tornato in Scopri`)}return}
   if(T("[data-playlist]")){makePlaylist();return}
   if(T("[data-pp]")){toggle();return}
   if(T("[data-next]")){nextTrack();return}
@@ -586,7 +600,7 @@ document.addEventListener("click",e=>{
   await callback();
   if(!logged()&&!cfg("cid"))view="imp";
   render();
-  if(logged()){initSdk();syncHearts();refreshNow();startPoll()}
+  if(logged()){initSdk();refreshNow();startPoll()}
   pull();
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)pull()});
   if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
