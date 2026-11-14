@@ -258,24 +258,25 @@ function infoPanel(a,b,key){
   if(loadingInfo.has(key))return `<div class="sinfo"><p class="about"><i class="spin"></i>Cerco informazioni…</p></div>`;
   if(!g)return `<div class="sinfo"><p class="about">Non ho trovato informazioni su questa canzone.</p></div>`;
   const c=Array.isArray(g.c)?g.c.filter(Boolean):[];
-  return `<div class="sinfo">${g.s?`<h4>${g.w?"Dalla voce di Wikipedia":"Significato"}</h4><p class="about">${esc(g.s)}${g.src?` <a href="${esc(g.src)}" target="_blank" rel="noopener">Leggi tutto</a>`:""}</p>`:""}${g.a?`<h4>Cosa racconta</h4><p class="about">${esc(g.a)}</p>`:""}${c.length?`<h4>Curiosità</h4><ul>${c.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}${g.ai?`<small class="note">Scritto da Claude: può contenere errori.</small>`:""}</div>`;
+  return `<div class="sinfo">${g.s?`<h4>${g.w?"Dalla voce di Wikipedia":"Significato"}</h4><p class="about">${esc(g.s)}${g.src?` <a href="${esc(g.src)}" target="_blank" rel="noopener">Leggi tutto</a>`:""}</p>`:""}${g.a?`<h4>Cosa racconta</h4><p class="about">${esc(g.a)}</p>`:""}${c.length?`<h4>Curiosità</h4><ul>${c.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}${g.ai?`<small class="note">Scritto da un'intelligenza artificiale gratuita: può contenere errori.</small>`:""}</div>`;
 }
 function songRow(a,b,i){
   const hearted=b.st==="ok",key=a.id+"|"+i,open=openInfo.has(key);
   return `<div class="srow"><div class="song${nowUri()===b.uri?" on":""}" data-aid="${esc(a.id)}" data-i="${i}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn info${open?" on":""}" type="button" data-info="${esc(key)}" aria-expanded="${open}" aria-label="Significato e curiosità di ${esc(b.t)}">${IC.info}</button><button class="rbtn known" type="button" data-known="${esc(a.id)}" data-i="${i}" aria-label="Già la conosco" title="Già la conosco">${IC.known}</button><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Mi ispira: aggiungila al mappazzone" title="Mi ispira" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>${open?infoPanel(a,b,key):""}</div>`;
 }
 async function aiInfo(a,b){
-  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":cfg("ak"),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-haiku-5-5",max_tokens:700,messages:[{role:"user",content:`Canzone «${b.t}» di ${a.nome}${b.al?` (album ${b.al})`:""}. Rispondi solo con JSON in italiano: {"s":"una frase sul tema, max 18 parole","a":"2-3 frasi su cosa racconta il testo, con parole tue","c":["un fatto certo"]}. In c metti solo fatti di cui sei sicuro, altrimenti lista vuota. Se non conosci la canzone, lascia s e a vuoti.`}]})});
-  if(r.status===401)throw Object.assign(new Error("Chiave Anthropic non valida"),{code:401});
-  if(!r.ok)throw new Error("Anthropic "+r.status);
-  const j=await r.json(),t=(j.content&&j.content[0]&&j.content[0].text)||"",m=t.match(/\{[\s\S]*\}/);
-  const o=m?JSON.parse(m[0]):null;
-  return o&&(o.s||o.a)?{s:String(o.s||""),a:String(o.a||""),c:Array.isArray(o.c)?o.c.filter(Boolean).slice(0,3):[],ai:1}:null;
+  const r=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"content-type":"application/json",Authorization:"Bearer "+cfg("gk")},body:JSON.stringify({model:"llama-3.3-70b-versatile",temperature:.3,max_tokens:600,response_format:{type:"json_object"},messages:[{role:"system",content:"Sei un esperto di musica. Rispondi sempre e solo in italiano, con JSON valido."},{role:"user",content:`Canzone «${b.t}» di ${a.nome}${b.al?` (album ${b.al})`:""}. Rispondi con JSON: {"s":"una frase sul tema, max 18 parole","a":"2-3 frasi su cosa racconta il testo, con parole tue","c":["un fatto certo"]}. In c metti solo fatti di cui sei sicuro, altrimenti lista vuota. Se non conosci la canzone, lascia s e a vuoti: non inventare.`}]})});
+  if(r.status===401)throw Object.assign(new Error("Chiave Groq non valida"),{code:401});
+  if(r.status===429)throw Object.assign(new Error("Troppe richieste, riprova tra un minuto"),{code:429});
+  if(!r.ok)throw new Error("Groq "+r.status);
+  const j=await r.json(),t=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||"";
+  let o=null;try{o=JSON.parse(t)}catch(e){const m=t.match(/\{[\s\S]*\}/);if(m)try{o=JSON.parse(m[0])}catch(_){}}
+  return o&&(o.s||o.a)?{s:String(o.s||""),a:String(o.a||""),c:Array.isArray(o.c)?o.c.filter(Boolean).slice(0,3).map(String):[],ai:1}:null;
 }
 async function songInfo(a,b){
   const k=a.id+"|"+a.brani.indexOf(b);loadingInfo.add(k);render();
   try{
-    if(cfg("ak")){try{const o=await aiInfo(a,b);if(o){b.sig=o;save();return}}catch(e){if(e.code===401)toast(e.message)}}
+    if(cfg("gk")){try{const o=await aiInfo(a,b);if(o){b.sig=o;save();return}}catch(e){if(e.code===401||e.code===429)toast(e.message)}}
     for(const lang of ["it","en"]){
       const r=await (await fetch(`https://${lang}.wikipedia.org/w/api.php?`+new URLSearchParams({action:"query",list:"search",srsearch:`${b.t} ${a.nome} ${lang==="it"?"canzone":"song"}`,srlimit:3,format:"json",origin:"*"}))).json();
       for(const h of (r.query&&r.query.search)||[]){
@@ -554,9 +555,9 @@ function renderSet(){
   <div class="card"><h3>2. Artisti affini (Last.fm)</h3><small>Serve per trovare artisti simili a quelli che ti piacciono. Chiave gratuita su last.fm/api.</small>
     <label>Chiave API Last.fm<input id="lfm" value="${esc(cfg("lfm"))}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="incolla la chiave"></label>
     <div class="mini"><button class="btn" type="button" data-savelfm>Salva</button></div></div>
-  <div class="card"><h3>4. Significato delle canzoni ${cfg("ak")?'<span class="ok-t">attivo</span>':"(facoltativo)"}</h3><small>Per avere significato, spiegazione e curiosità scritti da Claude come nel vecchio desk serve una chiave API di Anthropic (console.anthropic.com → API keys). Si paga a consumo: per ogni canzone costa una frazione di centesimo. Senza chiave, Sounder usa Wikipedia quando trova la voce della canzone.</small>
-    <label>Chiave Anthropic<input id="ak" type="password" value="${esc(cfg("ak"))}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-…"></label>
-    <div class="mini"><button class="btn" type="button" data-saveak>Salva</button>${cfg("ak")?`<button class="btn ghostb" type="button" data-noak>Togli</button>`:""}</div></div>
+  <div class="card"><h3>4. Significato delle canzoni ${cfg("gk")?'<span class="ok-t">attivo</span>':"(gratis)"}</h3><small>Per avere significato, spiegazione e curiosità di ogni canzone serve una chiave gratuita di Groq: vai su <b>console.groq.com</b>, accedi con Google o GitHub, apri «API Keys» e premi «Create API Key». Non chiede carta di credito. Senza chiave, Sounder usa Wikipedia dove trova la voce della canzone.</small>
+    <label>Chiave Groq<input id="gk" type="password" value="${esc(cfg("gk"))}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="gsk_…"></label>
+    <div class="mini"><button class="btn" type="button" data-savegk>Salva</button>${cfg("gk")?`<button class="btn ghostb" type="button" data-nogk>Togli</button>`:""}</div></div>
   <div class="card"><h3>Ascolto</h3><small>${mobile?"Dal telefono, Sounder comanda l'app Spotify: tieni l'app aperta o avviala una volta, poi premi play qui. Il player incorporato nel browser funziona solo su computer.":"Su computer, Sounder diventa un lettore Spotify: premi play su una canzone e parte qui nella pagina."} Serve Spotify Premium.</small></div>
   <div class="card"><h3>3. Sincronizza i dispositivi ${gh()?'<span class="ok-t">attiva</span>':""}</h3><small>Le tue scelte vengono salvate in un file privato nel tuo GitHub, così le ritrovi su telefono e computer. Serve un token gratuito: apri <b>github.com/settings/tokens/new?scopes=gist&amp;description=Sounder</b>, premi «Generate token» in fondo e copialo.</small>
     <label>Token GitHub<input id="gh" value="${esc(gh())}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="incolla il token (ghp_…)"></label>
@@ -587,8 +588,8 @@ document.addEventListener("click",e=>{
   if(T("[data-savecfg]")){cfg("cid",$("#cid").value.trim());if(!cfg("cid")){toast("Incolla il Client ID");return}if(logged()){toast("Salvato");render()}else login();return}
   if(T("[data-savelfm]")){cfg("lfm",$("#lfm").value.trim());toast("Chiave salvata");view="scopri";render();return}
   if(T("[data-savegh]")){cfg("gh",$("#gh").value.trim());cfg("gist","");if(!gh()){toast("Incolla il token");return}syncMsg="Sincronizzo…";render();pull().then(()=>{render();toast(syncMsg)});return}
-  if(T("[data-saveak]")){cfg("ak",$("#ak").value.trim());render();toast(cfg("ak")?"Chiave salvata":"Chiave tolta");return}
-  if(T("[data-noak]")){cfg("ak","");render();toast("Chiave tolta");return}
+  if(T("[data-savegk]")){cfg("gk",$("#gk").value.trim());render();toast(cfg("gk")?"Chiave salvata":"Chiave tolta");return}
+  if(T("[data-nogk]")){cfg("gk","");render();toast("Chiave tolta");return}
   if(T("[data-nogh]")){cfg("gh","");cfg("gist","");syncMsg="";render();toast("Sincronizzazione disattivata");return}
   if(T("[data-logout]")){localStorage.removeItem("sd-tok");sdk&&sdk.disconnect();sdk=null;dev=null;now=null;render();toast("Scollegato");return}
   if(T("[data-import]")){try{const j=JSON.parse($("#exp").value);if(!j||!j.artists)throw 0;S=Object.assign({artists:{},hearts:[],playlistId:""},j);save();toast("Dati importati");render()}catch(err){toast("Il testo non è valido")}return}
