@@ -89,10 +89,18 @@ function tabs(){
   const t=[["scopri","Scopri",pend().length],["preferiti","Mix",A().reduce((n,a)=>n+okList(a).length,0)],["imp","Opzioni",0]];
   $("#tabs").innerHTML=t.map(([k,l,n])=>`<button type="button" data-v="${k}"${view===k?' aria-current="page"':""}>${l}${n?`<span class="n">${n}</span>`:""}</button>`).join("");
 }
+let centerTheme=false;
 function render(){
+  const tl0=document.querySelector(".themes"),keepL=tl0?tl0.scrollLeft:null;
   tabs();
   if(view==="scopri")renderDeck();else if(view==="preferiti")renderFav();else renderSet();
   renderPlayer();
+  const tl=document.querySelector(".themes");
+  if(tl){
+    const sel=tl.querySelector("[aria-selected=true]");
+    if(centerTheme&&sel){tl.scrollLeft=sel.offsetLeft-(tl.clientWidth-sel.offsetWidth)/2;centerTheme=false}
+    else if(keepL!==null)tl.scrollLeft=keepL;
+  }
 }
 const cover=(a,cls)=>a.img?`<img src="${esc(a.img)}" alt="" loading="lazy">`:`<div class="fallback" style="background:linear-gradient(135deg,hsl(${hue(a.nome)} 60% 45%),hsl(${(hue(a.nome)+40)%360} 65% 25%))">${esc(initials(a.nome))}</div>`;
 
@@ -594,7 +602,7 @@ document.addEventListener("click",e=>{
   const T=s=>e.target.closest(s);let x;
   if((x=T("[data-v]"))){view=x.dataset.v;render();scrollTo({top:0});return}
   if(T("[data-discover]")){discover(true,tema);return}
-  if((x=T("[data-tema]"))){tema=x.dataset.tema;view="scopri";render();return}
+  if((x=T("[data-tema]"))){tema=x.dataset.tema;view="scopri";centerTheme=true;render();return}
   if((x=T("[data-dok],[data-dno]"))){const el=$(".dcard");if(el&&!el.dataset.busy){el.dataset.busy=1;const y=x.hasAttribute("data-dok");flyOut(el,y?1:-1,()=>decide(el.dataset.aid,y))}return}
   if((x=T("[data-play]"))){playFrom(x.dataset.play,Number(x.dataset.i),false);return}
   if((x=T("[data-playall]"))){playFrom(x.dataset.playall,0,true);return}
