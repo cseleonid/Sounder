@@ -9,7 +9,7 @@ const hue=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;retu
 const initials=n=>String(n).split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
 const DEFAULT_CID="f4ffe56412ce48e0865c20395514fc06";
 const cfg=(k,v)=>{try{if(v===undefined)return localStorage.getItem("sd-"+k)||(k==="cid"?DEFAULT_CID:"");v?localStorage.setItem("sd-"+k,v):localStorage.removeItem("sd-"+k)}catch(e){return ""}};
-const IC={ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg>',next:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5.5v13l9-6.5zM17 5.5h2v13h-2z"/></svg>',heart:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>',info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.800v.1"/></svg>',heart0:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>'};
+const IC={ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg>',next:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5.5v13l9-6.5zM17 5.5h2v13h-2z"/></svg>',heart:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>',info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.800v.1"/></svg>',known:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.500l2.800 2.800L16 9.500"/></svg>',heart0:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>'};
 
 /* ============ dati (salvati nel browser) ============ */
 let S={artists:{},hearts:[],playlistId:"",playlistN:0,playlistDate:""};
@@ -246,15 +246,24 @@ function infoPanel(a,b,key){
   if(loadingInfo.has(key))return `<div class="sinfo"><p class="about"><i class="spin"></i>Cerco informazioni…</p></div>`;
   if(!g)return `<div class="sinfo"><p class="about">Non ho trovato informazioni su questa canzone.</p></div>`;
   const c=Array.isArray(g.c)?g.c.filter(Boolean):[];
-  return `<div class="sinfo">${g.s?`<h4>${g.w?"Dalla voce di Wikipedia":"Significato"}</h4><p class="about">${esc(g.s)}${g.src?` <a href="${esc(g.src)}" target="_blank" rel="noopener">Leggi tutto</a>`:""}</p>`:""}${g.a?`<h4>Cosa racconta</h4><p class="about">${esc(g.a)}</p>`:""}${c.length?`<h4>Curiosità</h4><ul>${c.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}</div>`;
+  return `<div class="sinfo">${g.s?`<h4>${g.w?"Dalla voce di Wikipedia":"Significato"}</h4><p class="about">${esc(g.s)}${g.src?` <a href="${esc(g.src)}" target="_blank" rel="noopener">Leggi tutto</a>`:""}</p>`:""}${g.a?`<h4>Cosa racconta</h4><p class="about">${esc(g.a)}</p>`:""}${c.length?`<h4>Curiosità</h4><ul>${c.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}${g.ai?`<small class="note">Scritto da Claude: può contenere errori.</small>`:""}</div>`;
 }
 function songRow(a,b,i){
   const hearted=S.hearts.includes(b.uri),key=a.id+"|"+i,open=openInfo.has(key);
-  return `<div class="srow"><div class="song${nowUri()===b.uri?" on":""}" data-aid="${esc(a.id)}" data-i="${i}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn info${open?" on":""}" type="button" data-info="${esc(key)}" aria-expanded="${open}" aria-label="Significato e curiosità di ${esc(b.t)}">${IC.info}</button><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Salva tra i brani che ti piacciono" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>${open?infoPanel(a,b,key):""}</div>`;
+  return `<div class="srow"><div class="song${nowUri()===b.uri?" on":""}" data-aid="${esc(a.id)}" data-i="${i}"><div class="cv"${b.img?` style="background-image:url('${esc(b.img)}')"`:""}></div><div class="tx"><b>${esc(b.t)}</b><i>${esc([b.al,b.an&&"("+b.an+")"].filter(Boolean).join(" "))||"&nbsp;"}</i></div><button class="rbtn info${open?" on":""}" type="button" data-info="${esc(key)}" aria-expanded="${open}" aria-label="Significato e curiosità di ${esc(b.t)}">${IC.info}</button><button class="rbtn known" type="button" data-known="${esc(a.id)}" data-i="${i}" aria-label="Già la conosco" title="Già la conosco">${IC.known}</button><button class="rbtn heart${hearted?" on":""}" type="button" data-heart="${esc(a.id)}" data-i="${i}" aria-label="Salva tra i brani che ti piacciono" aria-pressed="${hearted}">${hearted?IC.heart:IC.heart0}</button><button class="rbtn play" type="button" data-play="${esc(a.id)}" data-i="${i}" aria-label="Ascolta ${esc(b.t)}">${IC.play}</button></div>${open?infoPanel(a,b,key):""}</div>`;
+}
+async function aiInfo(a,b){
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":cfg("ak"),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-haiku-5-5",max_tokens:700,messages:[{role:"user",content:`Canzone «${b.t}» di ${a.nome}${b.al?` (album ${b.al})`:""}. Rispondi solo con JSON in italiano: {"s":"una frase sul tema, max 18 parole","a":"2-3 frasi su cosa racconta il testo, con parole tue","c":["un fatto certo"]}. In c metti solo fatti di cui sei sicuro, altrimenti lista vuota. Se non conosci la canzone, lascia s e a vuoti.`}]})});
+  if(r.status===401)throw Object.assign(new Error("Chiave Anthropic non valida"),{code:401});
+  if(!r.ok)throw new Error("Anthropic "+r.status);
+  const j=await r.json(),t=(j.content&&j.content[0]&&j.content[0].text)||"",m=t.match(/\{[\s\S]*\}/);
+  const o=m?JSON.parse(m[0]):null;
+  return o&&(o.s||o.a)?{s:String(o.s||""),a:String(o.a||""),c:Array.isArray(o.c)?o.c.filter(Boolean).slice(0,3):[],ai:1}:null;
 }
 async function songInfo(a,b){
   const k=a.id+"|"+a.brani.indexOf(b);loadingInfo.add(k);render();
   try{
+    if(cfg("ak")){try{const o=await aiInfo(a,b);if(o){b.sig=o;save();return}}catch(e){if(e.code===401)toast(e.message)}}
     for(const lang of ["it","en"]){
       const r=await (await fetch(`https://${lang}.wikipedia.org/w/api.php?`+new URLSearchParams({action:"query",list:"search",srsearch:`${b.t} ${a.nome} ${lang==="it"?"canzone":"song"}`,srlimit:3,format:"json",origin:"*"}))).json();
       for(const h of (r.query&&r.query.search)||[]){
@@ -365,6 +374,12 @@ async function moreSongs(a){
     if(!add.length){toast(`Per ora non trovo altre canzoni di ${a.nome}`);return}
     a.brani.push(...add);save();render();
   }catch(e){}
+}
+function knownSong(id,i){
+  const a=S.artists[id],b=a&&a.brani[i];if(!b)return;
+  const prev=b.st;b.st="no";b.known=1;save();render();
+  toast("Segnata come già conosciuta",{l:"Annulla",f:()=>{b.st=prev;delete b.known;save();render()}});
+  moreSongs(a);
 }
 function dropSong(id,i){
   const a=S.artists[id],b=a&&a.brani[i];if(!b)return;
@@ -525,6 +540,9 @@ function renderSet(){
   <div class="card"><h3>2. Artisti affini (Last.fm)</h3><small>Serve per trovare artisti simili a quelli che ti piacciono. Chiave gratuita su last.fm/api.</small>
     <label>Chiave API Last.fm<input id="lfm" value="${esc(cfg("lfm"))}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="incolla la chiave"></label>
     <div class="mini"><button class="btn" type="button" data-savelfm>Salva</button></div></div>
+  <div class="card"><h3>4. Significato delle canzoni ${cfg("ak")?'<span class="ok-t">attivo</span>':"(facoltativo)"}</h3><small>Per avere significato, spiegazione e curiosità scritti da Claude come nel vecchio desk serve una chiave API di Anthropic (console.anthropic.com → API keys). Si paga a consumo: per ogni canzone costa una frazione di centesimo. Senza chiave, Sounder usa Wikipedia quando trova la voce della canzone.</small>
+    <label>Chiave Anthropic<input id="ak" type="password" value="${esc(cfg("ak"))}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-…"></label>
+    <div class="mini"><button class="btn" type="button" data-saveak>Salva</button>${cfg("ak")?`<button class="btn ghostb" type="button" data-noak>Togli</button>`:""}</div></div>
   <div class="card"><h3>Ascolto</h3><small>${mobile?"Dal telefono, Sounder comanda l'app Spotify: tieni l'app aperta o avviala una volta, poi premi play qui. Il player incorporato nel browser funziona solo su computer.":"Su computer, Sounder diventa un lettore Spotify: premi play su una canzone e parte qui nella pagina."} Serve Spotify Premium.</small></div>
   <div class="card"><h3>3. Sincronizza i dispositivi ${gh()?'<span class="ok-t">attiva</span>':""}</h3><small>Le tue scelte vengono salvate in un file privato nel tuo GitHub, così le ritrovi su telefono e computer. Serve un token gratuito: apri <b>github.com/settings/tokens/new?scopes=gist&amp;description=Sounder</b>, premi «Generate token» in fondo e copialo.</small>
     <label>Token GitHub<input id="gh" value="${esc(gh())}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="incolla il token (ghp_…)"></label>
@@ -545,6 +563,7 @@ document.addEventListener("click",e=>{
   if((x=T("[data-play]"))){playFrom(x.dataset.play,Number(x.dataset.i),false);return}
   if((x=T("[data-playall]"))){playFrom(x.dataset.playall,0,true);return}
   if((x=T("[data-info]"))){const k=x.dataset.info,[id,ix]=k.split("|"),a=S.artists[id],b=a&&a.brani[Number(ix)];if(openInfo.has(k))openInfo.delete(k);else{openInfo.add(k);if(b&&!sigOf(b)&&b.sig!==0)songInfo(a,b)}render();return}
+  if((x=T("[data-known]"))){knownSong(x.dataset.known,Number(x.dataset.i));return}
   if((x=T("[data-heart]"))){heart(x.dataset.heart,Number(x.dataset.i));return}
   if((x=T("[data-open]"))){openArtist=openArtist===x.dataset.open?null:x.dataset.open;render();return}
   if((x=T("[data-remove]"))){const a=S.artists[x.dataset.remove];if(a){a.stato="nuovo";a.dec="";a.ord=A().reduce((m,y)=>Math.max(m,y.ord||0),0)+1;save();openArtist=null;render();toast(`${a.nome} è tornato in Scopri`)}return}
@@ -554,6 +573,8 @@ document.addEventListener("click",e=>{
   if(T("[data-savecfg]")){cfg("cid",$("#cid").value.trim());if(!cfg("cid")){toast("Incolla il Client ID");return}if(logged()){toast("Salvato");render()}else login();return}
   if(T("[data-savelfm]")){cfg("lfm",$("#lfm").value.trim());toast("Chiave salvata");view="scopri";render();return}
   if(T("[data-savegh]")){cfg("gh",$("#gh").value.trim());cfg("gist","");if(!gh()){toast("Incolla il token");return}syncMsg="Sincronizzo…";render();pull().then(()=>{render();toast(syncMsg)});return}
+  if(T("[data-saveak]")){cfg("ak",$("#ak").value.trim());render();toast(cfg("ak")?"Chiave salvata":"Chiave tolta");return}
+  if(T("[data-noak]")){cfg("ak","");render();toast("Chiave tolta");return}
   if(T("[data-nogh]")){cfg("gh","");cfg("gist","");syncMsg="";render();toast("Sincronizzazione disattivata");return}
   if(T("[data-logout]")){localStorage.removeItem("sd-tok");sdk&&sdk.disconnect();sdk=null;dev=null;now=null;render();toast("Scollegato");return}
   if(T("[data-import]")){try{const j=JSON.parse($("#exp").value);if(!j||!j.artists)throw 0;S=Object.assign({artists:{},hearts:[],playlistId:""},j);save();toast("Dati importati");render()}catch(err){toast("Il testo non è valido")}return}
