@@ -98,8 +98,12 @@ function render(){
   const tl=document.querySelector(".themes");
   if(tl){
     const sel=tl.querySelector("[aria-selected=true]");
-    if(centerTheme&&sel){tl.scrollLeft=sel.offsetLeft-(tl.clientWidth-sel.offsetWidth)/2;centerTheme=false}
-    else if(keepL!==null)tl.scrollLeft=keepL;
+    if(keepL!==null&&!centerTheme)tl.scrollLeft=keepL;
+    if(sel){
+      const l=sel.offsetLeft-tl.scrollLeft,r=l+sel.offsetWidth,pad=12;
+      if(centerTheme||l<pad||r>tl.clientWidth-48)tl.scrollLeft=sel.offsetLeft-(tl.clientWidth-sel.offsetWidth)/2;
+      centerTheme=false;
+    }
   }
 }
 const cover=(a,cls)=>a.img?`<img src="${esc(a.img)}" alt="" loading="lazy">`:`<div class="fallback" style="background:linear-gradient(135deg,hsl(${hue(a.nome)} 60% 45%),hsl(${(hue(a.nome)+40)%360} 65% 25%))">${esc(initials(a.nome))}</div>`;
@@ -200,7 +204,7 @@ const TEMI=[
  {id:"strumenta",n:"Strumenta",d:"Niente parole, solo suono: musica da ascoltare a occhi chiusi o da lasciare in cuffia mentre lavori.",tags:["instrumental","post-rock","ambient","jazz fusion","math rock"]},
  {id:"sottocassa",n:"Sotto cassa",d:"Cassa dritta, bpm alti e pista infinita: rave, techno, goa, hardcore e trance.",tags:["trance","goa trance","psytrance","hard techno","hardcore","techno","rave","gabber"]}
 ];
-let tema="per-te";const tried={};
+let tema=cfg("tema")||"per-te";if(!TEMI.some(t=>t.id===tema))tema="per-te";const tried={};
 const temaOf=a=>a.tema||"per-te";
 const shuffle=l=>l.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
 
@@ -602,7 +606,7 @@ document.addEventListener("click",e=>{
   const T=s=>e.target.closest(s);let x;
   if((x=T("[data-v]"))){view=x.dataset.v;render();scrollTo({top:0});return}
   if(T("[data-discover]")){discover(true,tema);return}
-  if((x=T("[data-tema]"))){tema=x.dataset.tema;view="scopri";centerTheme=true;render();return}
+  if((x=T("[data-tema]"))){tema=x.dataset.tema;cfg("tema",tema);view="scopri";centerTheme=true;render();return}
   if((x=T("[data-dok],[data-dno]"))){const el=$(".dcard");if(el&&!el.dataset.busy){el.dataset.busy=1;const y=x.hasAttribute("data-dok");flyOut(el,y?1:-1,()=>decide(el.dataset.aid,y))}return}
   if((x=T("[data-play]"))){playFrom(x.dataset.play,Number(x.dataset.i),false);return}
   if((x=T("[data-playall]"))){playFrom(x.dataset.playall,0,true);return}

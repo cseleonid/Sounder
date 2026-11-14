@@ -1,5 +1,5 @@
 /* Rete prima, cache come ripiego: l'app si apre anche senza connessione, ma si aggiorna sempre */
-const C="sounder-v8",F=["./","index.html","style.css","app.js","seed.js","sig.js","icon-192.png"];
+const C="sounder-v9",F=["./","index.html","style.css","app.js","seed.js","sig.js","icon-192.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F)).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",e=>{
